@@ -68,5 +68,43 @@ def txt2img(r: gr.Request, id_task: str, prompt: str, negative_prompt: str, prom
 
     if opts.do_not_show_images:
         processed.images = []
-    create_aigc_item(r, processed.images, generation_info_js)
+
+    model_name = shared.sd_model.sd_checkpoint_info.model_name
+    input_data = {
+        "prompt": prompt,
+        "styles": prompt_styles,
+        "negative_prompt": negative_prompt,
+        "seed": seed,
+        "subseed": subseed,
+        "subseed_strength": subseed_strength,
+        "seed_resize_from_h": seed_resize_from_h,
+        "seed_resize_from_w": seed_resize_from_w,
+        "seed_enable_extras": seed_enable_extras,
+        "sampler_index": sampler_index,
+        "sampler_name": sd_samplers.samplers[sampler_index].name,
+        "batch_size": batch_size,
+        "n_iter": n_iter,
+        "steps": steps,
+        "cfg_scale": cfg_scale,
+        "width": width,
+        "height": height,
+        "restore_faces":  restore_faces,
+        "tiling": tiling,
+        "enable_hr": enable_hr,
+        "denoising_strength": denoising_strength if enable_hr else None,
+        "hr_scale": hr_scale,
+        "hr_upscaler": hr_upscaler,
+        "hr_second_pass_steps": hr_second_pass_steps,
+        "hr_resize_x": hr_resize_x,
+        "hr_resize_y": hr_resize_y,
+        "hr_sampler_name": sd_samplers.samplers_for_img2img[hr_sampler_index - 1].name if hr_sampler_index != 0 else None,
+        "hr_sampler_index": hr_sampler_index,
+        "hr_prompt": hr_prompt,
+        "hr_negative_prompt": hr_negative_prompt,
+        "override_settings": override_settings,
+    }
+
+    create_aigc_item(r, model_name, input_data,
+                     processed.images, generation_info_js)
+
     return processed.images, generation_info_js, plaintext_to_html(processed.info), plaintext_to_html(processed.comments)

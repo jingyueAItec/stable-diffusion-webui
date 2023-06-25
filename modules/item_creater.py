@@ -19,7 +19,7 @@ def gen_aigc_oss_id():
     return val
 
 
-def create_aigc_item(conn: gr.Request, images_gen, info):
+def create_aigc_item(conn: gr.Request, model_name, input_data, images_gen, gen_info):
 
     images = []
     if len(images_gen) > 1:  # 第一张是混合的缩略图，处理下
@@ -43,7 +43,9 @@ def create_aigc_item(conn: gr.Request, images_gen, info):
 
     import json
     data = {
-        "meta": json.loads(info),
+        "gen_meta": json.loads(gen_info),
+        "model_name": model_name,
+        "input_data":  input_data,
         "images": images,
     }
 
