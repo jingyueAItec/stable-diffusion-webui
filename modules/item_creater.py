@@ -19,10 +19,13 @@ def gen_aigc_oss_id():
     return val
 
 
-def create_aigc_item(conn: gr.Request, images, info):
+def create_aigc_item(conn: gr.Request, images_gen, info):
 
     images = []
-    for image in images:
+    if len(images_gen) > 1:  # 第一张是混合的缩略图，处理下
+        images = images[1:]
+
+    for image in images_gen:
         id = gen_aigc_oss_id()
         oss_name = "{}.png".format(id)
 
