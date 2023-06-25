@@ -5,16 +5,12 @@ from modules.shared import opts, cmd_opts
 import modules.shared as shared
 from modules.ui import plaintext_to_html
 import gradio as gr
+from modules.item_creater import create_aigc_item
 
 
 def txt2img(r: gr.Request, id_task: str, prompt: str, negative_prompt: str, prompt_styles, steps: int, sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float, seed: int, subseed: int, subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float, hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, hr_sampler_index: int, hr_prompt: str, hr_negative_prompt, override_settings_texts, *args):
-    print("Hello World!", r.username, r)
 
     override_settings = create_override_settings_dict(override_settings_texts)
-
-    import traceback
-    traceback.print_stack()
-
     p = processing.StableDiffusionProcessingTxt2Img(
         sd_model=shared.sd_model,
         outpath_samples=opts.outdir_samples or opts.outdir_txt2img_samples,
@@ -72,5 +68,5 @@ def txt2img(r: gr.Request, id_task: str, prompt: str, negative_prompt: str, prom
 
     if opts.do_not_show_images:
         processed.images = []
-
+    create_aigc_item(r, processed.images, generation_info_js)
     return processed.images, generation_info_js, plaintext_to_html(processed.info), plaintext_to_html(processed.comments)

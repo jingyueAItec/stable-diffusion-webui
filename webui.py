@@ -2,6 +2,8 @@ from __future__ import annotations
 import modules.hypernetworks.hypernetwork
 from modules.shared import cmd_opts
 from modules import modelloader
+import hmac
+from hashlib import sha512
 import modules.ui
 import modules.progress
 import modules.textual_inversion.textual_inversion
@@ -328,7 +330,7 @@ def initialize_rest(*, reload_script_modules=False):
 
 
 def decode_cookie(cookie, key=None):
-    import hmac
+
     try:
         payload, digest = cookie.rsplit("|", 1)
         if hasattr(digest, "decode"):
@@ -356,15 +358,18 @@ def _cookie_digest(payload, key=None):
     return hmac.new(key, payload.encode("utf-8"), sha512).hexdigest()
 
 
+REMEMBER_COOKIE_NAME = 'greatleapai_token'
+
+
 class GreateLeapAuthBackend(AuthenticationBackend):
     async def authenticate(
         self, conn: HTTPConnection
     ) -> typing.Optional[typing.Tuple["AuthCredentials", "SimpleUser"]]:
-        token = conn.cookies["remember_token"]
+        token = conn.cookies[REMEMBER_COOKIE_NAME]
         user_id = decode_cookie(token)
         app = conn.scope["app"]
         app.tokens[token] = user_id
-        return AuthCredentials(["132342"]), SimpleUser("zhumeiqi")
+        return AuthCredentials([token]), SimpleUser(user_id)
 
 
 def setup_middleware(app):
