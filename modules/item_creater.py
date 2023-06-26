@@ -22,7 +22,7 @@ def gen_aigc_oss_id():
 
 
 def call_zy_backend(conn: gr.Request, url, data):
-    rsp = requests.post(zy_backend_url, json=data, cookies={
+    rsp = requests.post(url, json=data, cookies={
         REMEMBER_COOKIE_NAME: conn.cookies[REMEMBER_COOKIE_NAME],
     })
 
@@ -40,7 +40,8 @@ def create_aigc_item_subcoin(conn: gr.Request, model_name, input_data):
         return False, 0
 
     rsp = json.loads(rsp_text)
-    data = rsp.get("data")
+    data = rsp.get("data", {})
+    print(rsp_text)
 
     return True, data["coin"]
 
