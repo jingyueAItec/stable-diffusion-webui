@@ -22,9 +22,10 @@ def gen_aigc_oss_id():
 
 
 def call_zy_backend(conn: gr.Request, url, data):
-    rsp = requests.post(url, json=data, cookies={
-        REMEMBER_COOKIE_NAME: conn.cookies[REMEMBER_COOKIE_NAME],
-    })
+    headers = {
+        "cookie": conn.headers.cookie
+    }
+    rsp = requests.post(url, json=data, headers=conn.headers)
 
     return rsp.status_code, rsp.text
 

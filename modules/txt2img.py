@@ -90,7 +90,7 @@ def txt2img(r: gr.Request, id_task: str, prompt: str, negative_prompt: str, prom
 
     succ, coin = create_aigc_item_subcoin(r, model_name, input_data)
     if not succ:
-        return [], '', plaintext_to_html("扣除金币失败"), plaintext_to_html('')
+        return [], '', plaintext_to_html("扣除金币失败"), plaintext_to_html(coin)
 
     processed = modules.scripts.scripts_txt2img.run(p, *args)
 

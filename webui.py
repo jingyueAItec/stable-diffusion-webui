@@ -375,8 +375,8 @@ class GreateLeapAuthBackend(AuthenticationBackend):
 def setup_middleware(app):
     # reset current middleware to allow modifying user provided list
     app.middleware_stack = None
-    # app.add_middleware(AuthenticationMiddleware,
-    #                   backend=GreateLeapAuthBackend())
+    app.add_middleware(AuthenticationMiddleware,
+                       backend=GreateLeapAuthBackend())
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     configure_cors_middleware(app)
     app.build_middleware_stack()  # rebuild middleware stack on-the-fly
