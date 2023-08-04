@@ -1,10 +1,11 @@
-import html
 import sys
 import threading
-import traceback
 import time
+import traceback
 
-from modules import shared, progress
+import html
+from modules import progress
+from modules import shared
 
 queue_lock = threading.Lock()
 
@@ -57,7 +58,7 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
             res = list(func(*args, **kwargs))
         except Exception as e:
             # When printing out our debug argument list, do not print out more than a MB of text
-            max_debug_str_len = 131072 # (1024*1024)/8
+            max_debug_str_len = 131072  # (1024*1024)/8
 
             print("Error completing request", file=sys.stderr)
             argStr = f"Arguments: {args} {kwargs}"
@@ -71,9 +72,9 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
             shared.state.job_count = 0
 
             if extra_outputs_array is None:
-                extra_outputs_array = [None, '']
+                extra_outputs_array = [None, ""]
 
-            error_message = f'{type(e).__name__}: {e}'
+            error_message = f"{type(e).__name__}: {e}"
             res = extra_outputs_array + [f"<div class='error'>{html.escape(error_message)}</div>"]
 
         shared.state.skipped = False
@@ -88,19 +89,19 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
         elapsed_s = elapsed % 60
         elapsed_text = f"{elapsed_s:.2f}s"
         if elapsed_m > 0:
-            elapsed_text = f"{elapsed_m}m "+elapsed_text
+            elapsed_text = f"{elapsed_m}m " + elapsed_text
 
         if run_memmon:
-            mem_stats = {k: -(v//-(1024*1024)) for k, v in shared.mem_mon.stop().items()}
-            active_peak = mem_stats['active_peak']
-            reserved_peak = mem_stats['reserved_peak']
-            sys_peak = mem_stats['system_peak']
-            sys_total = mem_stats['total']
-            sys_pct = round(sys_peak/max(sys_total, 1) * 100, 2)
+            mem_stats = {k: -(v // -(1024 * 1024)) for k, v in shared.mem_mon.stop().items()}
+            active_peak = mem_stats["active_peak"]
+            reserved_peak = mem_stats["reserved_peak"]
+            sys_peak = mem_stats["system_peak"]
+            sys_total = mem_stats["total"]
+            sys_pct = round(sys_peak / max(sys_total, 1) * 100, 2)
 
             vram_html = f"<p class='vram'>Torch active/reserved: {active_peak}/{reserved_peak} MiB, <wbr>Sys VRAM: {sys_peak}/{sys_total} MiB ({sys_pct}%)</p>"
         else:
-            vram_html = ''
+            vram_html = ""
 
         # last item is always HTML
         res[-1] += f"<div class='performance'><p class='time'>Time taken: <wbr>{elapsed_text}</p>{vram_html}</div>"
@@ -108,4 +109,3 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
         return tuple(res)
 
     return f
-

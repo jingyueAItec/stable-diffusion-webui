@@ -1,7 +1,10 @@
-from modules import sd_samplers_compvis, sd_samplers_kdiffusion, shared
+from modules import sd_samplers_compvis
+from modules import sd_samplers_kdiffusion
+from modules import shared
+from modules.sd_samplers_common import sample_to_image
+from modules.sd_samplers_common import samples_to_image_grid
 
 # imports for functions that previously were here and are used by other modules
-from modules.sd_samplers_common import samples_to_image_grid, sample_to_image  # noqa: F401
 
 all_samplers = [
     *sd_samplers_kdiffusion.samplers_data_k_diffusion,
@@ -26,7 +29,7 @@ def find_sampler_config(name):
 def create_sampler(name, model):
     config = find_sampler_config(name)
 
-    assert config is not None, f'bad sampler name: {name}'
+    assert config is not None, f"bad sampler name: {name}"
 
     sampler = config.constructor(model)
     sampler.config = config
@@ -38,7 +41,7 @@ def set_samplers():
     global samplers, samplers_for_img2img
 
     hidden = set(shared.opts.hide_samplers)
-    hidden_img2img = set(shared.opts.hide_samplers + ['PLMS', 'UniPC'])
+    hidden_img2img = set(shared.opts.hide_samplers + ["PLMS", "UniPC"])
 
     samplers = [x for x in all_samplers if x.name not in hidden]
     samplers_for_img2img = [x for x in all_samplers if x.name not in hidden_img2img]

@@ -36,10 +36,10 @@ class UiLoadsave:
         def apply_field(obj, field, condition=None, init_field=None):
             key = f"{path}/{field}"
 
-            if getattr(obj, 'custom_script_source', None) is not None:
-              key = f"customscript/{obj.custom_script_source}/{key}"
+            if getattr(obj, "custom_script_source", None) is not None:
+                key = f"customscript/{obj.custom_script_source}/{key}"
 
-            if getattr(obj, 'do_not_save_to_config', False):
+            if getattr(obj, "do_not_save_to_config", False):
                 return
 
             saved_value = self.ui_settings.get(key, None)
@@ -52,38 +52,42 @@ class UiLoadsave:
                 if init_field is not None:
                     init_field(saved_value)
 
-            if field == 'value' and key not in self.component_mapping:
+            if field == "value" and key not in self.component_mapping:
                 self.component_mapping[key] = x
 
-        if type(x) in [gr.Slider, gr.Radio, gr.Checkbox, gr.Textbox, gr.Number, gr.Dropdown, ToolButton, gr.Button] and x.visible:
-            apply_field(x, 'visible')
+        if (
+            type(x) in [gr.Slider, gr.Radio, gr.Checkbox, gr.Textbox, gr.Number, gr.Dropdown, ToolButton, gr.Button]
+            and x.visible
+        ):
+            apply_field(x, "visible")
 
         if type(x) == gr.Slider:
-            apply_field(x, 'value')
-            apply_field(x, 'minimum')
-            apply_field(x, 'maximum')
-            apply_field(x, 'step')
+            apply_field(x, "value")
+            apply_field(x, "minimum")
+            apply_field(x, "maximum")
+            apply_field(x, "step")
 
         if type(x) == gr.Radio:
-            apply_field(x, 'value', lambda val: val in x.choices)
+            apply_field(x, "value", lambda val: val in x.choices)
 
         if type(x) == gr.Checkbox:
-            apply_field(x, 'value')
+            apply_field(x, "value")
 
         if type(x) == gr.Textbox:
-            apply_field(x, 'value')
+            apply_field(x, "value")
 
         if type(x) == gr.Number:
-            apply_field(x, 'value')
+            apply_field(x, "value")
 
         if type(x) == gr.Dropdown:
+
             def check_dropdown(val):
-                if getattr(x, 'multiselect', False):
+                if getattr(x, "multiselect", False):
                     return all(value in x.choices for value in val)
                 else:
                     return val in x.choices
 
-            apply_field(x, 'value', check_dropdown, getattr(x, 'init_field', None))
+            apply_field(x, "value", check_dropdown, getattr(x, "init_field", None))
 
         def check_tab_id(tab_id):
             tab_items = list(filter(lambda e: isinstance(e, gr.TabItem), x.children))
@@ -96,12 +100,12 @@ class UiLoadsave:
                 return False
 
         if type(x) == gr.Tabs:
-            apply_field(x, 'selected', check_tab_id)
+            apply_field(x, "selected", check_tab_id)
 
     def add_block(self, x, path=""):
         """adds all components inside a gradio block x to the registry of tracked components"""
 
-        if hasattr(x, 'children'):
+        if hasattr(x, "children"):
             if isinstance(x, gr.Tabs) and x.elem_id is not None:
                 # Tabs element can't have a label, have to use elem_id instead
                 self.add_component(f"{path}/Tabs@{x.elem_id}", x)
@@ -138,7 +142,7 @@ class UiLoadsave:
         for (path, component), new_value in zip(self.component_mapping.items(), values):
             old_value = current_ui_settings.get(path)
 
-            choices = getattr(component, 'choices', None)
+            choices = getattr(component, "choices", None)
             if isinstance(new_value, int) and choices:
                 if new_value >= len(choices):
                     continue
@@ -148,7 +152,7 @@ class UiLoadsave:
             if new_value == old_value:
                 continue
 
-            if old_value is None and new_value == '' or new_value == []:
+            if old_value is None and new_value == "" or new_value == []:
                 continue
 
             yield path, old_value, new_value
@@ -195,8 +199,8 @@ class UiLoadsave:
         )
 
         with gr.Row():
-            self.ui_defaults_view = gr.Button(value='View changes', elem_id="ui_defaults_view", variant="secondary")
-            self.ui_defaults_apply = gr.Button(value='Apply', elem_id="ui_defaults_apply", variant="primary")
+            self.ui_defaults_view = gr.Button(value="View changes", elem_id="ui_defaults_view", variant="secondary")
+            self.ui_defaults_apply = gr.Button(value="Apply", elem_id="ui_defaults_apply", variant="primary")
 
         self.ui_defaults_review = gr.HTML("")
 
@@ -206,5 +210,9 @@ class UiLoadsave:
         assert not self.finalized_ui
         self.finalized_ui = True
 
-        self.ui_defaults_view.click(fn=self.ui_view, inputs=list(self.component_mapping.values()), outputs=[self.ui_defaults_review])
-        self.ui_defaults_apply.click(fn=self.ui_apply, inputs=list(self.component_mapping.values()), outputs=[self.ui_defaults_review])
+        self.ui_defaults_view.click(
+            fn=self.ui_view, inputs=list(self.component_mapping.values()), outputs=[self.ui_defaults_review]
+        )
+        self.ui_defaults_apply.click(
+            fn=self.ui_apply, inputs=list(self.component_mapping.values()), outputs=[self.ui_defaults_review]
+        )

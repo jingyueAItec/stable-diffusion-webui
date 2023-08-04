@@ -2,10 +2,12 @@ import os
 
 import torch
 
-from modules import shared, paths, sd_disable_initialization
+from modules import paths
+from modules import sd_disable_initialization
+from modules import shared
 
 sd_configs_path = shared.sd_configs_path
-sd_repo_configs_path = os.path.join(paths.paths['Stable Diffusion'], "configs", "stable-diffusion")
+sd_repo_configs_path = os.path.join(paths.paths["Stable Diffusion"], "configs", "stable-diffusion")
 
 
 config_default = shared.sd_default_config
@@ -46,12 +48,14 @@ def is_using_v_parameterization_for_sd2(state_dict):
             use_linear_in_transformer=True,
             transformer_depth=1,
             context_dim=1024,
-            legacy=False
+            legacy=False,
         )
         unet.eval()
 
     with torch.no_grad():
-        unet_sd = {k.replace("model.diffusion_model.", ""): v for k, v in state_dict.items() if "model.diffusion_model." in k}
+        unet_sd = {
+            k.replace("model.diffusion_model.", ""): v for k, v in state_dict.items() if "model.diffusion_model." in k
+        }
         unet.load_state_dict(unet_sd, strict=True)
         unet.to(device=device, dtype=torch.float)
 
@@ -64,11 +68,11 @@ def is_using_v_parameterization_for_sd2(state_dict):
 
 
 def guess_model_config_from_state_dict(sd, filename):
-    sd2_cond_proj_weight = sd.get('cond_stage_model.model.transformer.resblocks.0.attn.in_proj_weight', None)
-    diffusion_model_input = sd.get('model.diffusion_model.input_blocks.0.0.weight', None)
-    sd2_variations_weight = sd.get('embedder.model.ln_final.weight', None)
+    sd2_cond_proj_weight = sd.get("cond_stage_model.model.transformer.resblocks.0.attn.in_proj_weight", None)
+    diffusion_model_input = sd.get("model.diffusion_model.input_blocks.0.0.weight", None)
+    sd2_variations_weight = sd.get("embedder.model.ln_final.weight", None)
 
-    if sd.get('depth_model.model.pretrained.act_postprocess3.0.project.0.bias', None) is not None:
+    if sd.get("depth_model.model.pretrained.act_postprocess3.0.project.0.bias", None) is not None:
         return config_depth_model
     elif sd2_variations_weight is not None and sd2_variations_weight.shape[0] == 768:
         return config_unclip
@@ -89,7 +93,7 @@ def guess_model_config_from_state_dict(sd, filename):
         if diffusion_model_input.shape[1] == 8:
             return config_instruct_pix2pix
 
-    if sd.get('cond_stage_model.roberta.embeddings.word_embeddings.weight', None) is not None:
+    if sd.get("cond_stage_model.roberta.embeddings.word_embeddings.weight", None) is not None:
         return config_alt_diffusion
 
     return config_default
@@ -115,4 +119,3 @@ def find_checkpoint_config_near_filename(info):
         return config
 
     return None
-

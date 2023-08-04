@@ -78,7 +78,7 @@ A browser interface based on Gradio library for Stable Diffusion.
 - Clip skip
 - Hypernetworks
 - Loras (same as Hypernetworks but more pretty)
-- A sparate UI where you can choose, with preview, which embeddings, hypernetworks or Loras to add to your prompt 
+- A sparate UI where you can choose, with preview, which embeddings, hypernetworks or Loras to add to your prompt
 - Can select to load a different VAE from settings screen
 - Estimated completion time in progress bar
 - API

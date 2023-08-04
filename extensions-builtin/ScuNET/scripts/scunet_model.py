@@ -2,16 +2,17 @@ import os.path
 import sys
 import traceback
 
-import PIL.Image
 import numpy as np
+import PIL.Image
 import torch
+from basicsr.utils.download_util import load_file_from_url
+from scunet_model_arch import SCUNet as net
 from tqdm import tqdm
 
-from basicsr.utils.download_util import load_file_from_url
-
 import modules.upscaler
-from modules import devices, modelloader, script_callbacks
-from scunet_model_arch import SCUNet as net
+from modules import devices
+from modules import modelloader
+from modules import script_callbacks
 from modules.shared import opts
 
 
@@ -55,7 +56,7 @@ class UpscalerScuNET(modules.upscaler.Upscaler):
         if tile == 0:
             return model(img)
 
-        device = devices.get_device_for('scunet')
+        device = devices.get_device_for("scunet")
         assert tile % 8 == 0, "tile size should be a multiple of window_size"
         sf = 1
 
@@ -70,17 +71,13 @@ class UpscalerScuNET(modules.upscaler.Upscaler):
 
                 for w_idx in w_idx_list:
 
-                    in_patch = img[..., h_idx: h_idx + tile, w_idx: w_idx + tile]
+                    in_patch = img[..., h_idx : h_idx + tile, w_idx : w_idx + tile]
 
                     out_patch = model(in_patch)
                     out_patch_mask = torch.ones_like(out_patch)
 
-                    E[
-                        ..., h_idx * sf: (h_idx + tile) * sf, w_idx * sf: (w_idx + tile) * sf
-                    ].add_(out_patch)
-                    W[
-                        ..., h_idx * sf: (h_idx + tile) * sf, w_idx * sf: (w_idx + tile) * sf
-                    ].add_(out_patch_mask)
+                    E[..., h_idx * sf : (h_idx + tile) * sf, w_idx * sf : (w_idx + tile) * sf].add_(out_patch)
+                    W[..., h_idx * sf : (h_idx + tile) * sf, w_idx * sf : (w_idx + tile) * sf].add_(out_patch_mask)
                     pbar.update(1)
         output = E.div_(W)
 
@@ -95,7 +92,7 @@ class UpscalerScuNET(modules.upscaler.Upscaler):
             print(f"ScuNET: Unable to load model from {selected_file}", file=sys.stderr)
             return img
 
-        device = devices.get_device_for('scunet')
+        device = devices.get_device_for("scunet")
         tile = opts.SCUNET_tile
         h, w = img.height, img.width
         np_img = np.array(img)
@@ -105,11 +102,11 @@ class UpscalerScuNET(modules.upscaler.Upscaler):
 
         if tile > h or tile > w:
             _img = torch.zeros(1, 3, max(h, tile), max(w, tile), dtype=torch_img.dtype, device=torch_img.device)
-            _img[:, :, :h, :w] = torch_img # pad image
+            _img[:, :, :h, :w] = torch_img  # pad image
             torch_img = _img
 
         torch_output = self.tiled_inference(torch_img, model).squeeze(0)
-        torch_output = torch_output[:, :h * 1, :w * 1] # remove padding, if any
+        torch_output = torch_output[:, : h * 1, : w * 1]  # remove padding, if any
         np_output: np.ndarray = torch_output.float().cpu().clamp_(0, 1).numpy()
         del torch_img, torch_output
         torch.cuda.empty_cache()
@@ -119,9 +116,11 @@ class UpscalerScuNET(modules.upscaler.Upscaler):
         return PIL.Image.fromarray((output * 255).astype(np.uint8))
 
     def load_model(self, path: str):
-        device = devices.get_device_for('scunet')
+        device = devices.get_device_for("scunet")
         if "http" in path:
-            filename = load_file_from_url(url=self.model_url, model_dir=self.model_download_path, file_name="%s.pth" % self.name, progress=True)
+            filename = load_file_from_url(
+                url=self.model_url, model_dir=self.model_download_path, file_name="%s.pth" % self.name, progress=True
+            )
         else:
             filename = path
         if not os.path.exists(os.path.join(self.model_path, filename)) or filename is None:
@@ -142,8 +141,26 @@ def on_ui_settings():
     import gradio as gr
     from modules import shared
 
-    shared.opts.add_option("SCUNET_tile", shared.OptionInfo(256, "Tile size for SCUNET upscalers.", gr.Slider, {"minimum": 0, "maximum": 512, "step": 16}, section=('upscaling', "Upscaling")).info("0 = no tiling"))
-    shared.opts.add_option("SCUNET_tile_overlap", shared.OptionInfo(8, "Tile overlap for SCUNET upscalers.", gr.Slider, {"minimum": 0, "maximum": 64, "step": 1}, section=('upscaling', "Upscaling")).info("Low values = visible seam"))
+    shared.opts.add_option(
+        "SCUNET_tile",
+        shared.OptionInfo(
+            256,
+            "Tile size for SCUNET upscalers.",
+            gr.Slider,
+            {"minimum": 0, "maximum": 512, "step": 16},
+            section=("upscaling", "Upscaling"),
+        ).info("0 = no tiling"),
+    )
+    shared.opts.add_option(
+        "SCUNET_tile_overlap",
+        shared.OptionInfo(
+            8,
+            "Tile overlap for SCUNET upscalers.",
+            gr.Slider,
+            {"minimum": 0, "maximum": 64, "step": 1},
+            section=("upscaling", "Upscaling"),
+        ).info("Low values = visible seam"),
+    )
 
 
 script_callbacks.on_ui_settings(on_ui_settings)

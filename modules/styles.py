@@ -1,8 +1,7 @@
 import csv
-import os
 import os.path
-import typing
 import shutil
+import typing
 
 
 class PromptStyle(typing.NamedTuple):
@@ -42,7 +41,7 @@ class StyleDatabase:
         if not os.path.exists(self.path):
             return
 
-        with open(self.path, "r", encoding="utf-8-sig", newline='') as file:
+        with open(self.path, "r", encoding="utf-8-sig", newline="") as file:
             reader = csv.DictReader(file, skipinitialspace=True)
             for row in reader:
                 # Support loading old CSV format with "name, text"-columns
@@ -67,10 +66,10 @@ class StyleDatabase:
         if os.path.exists(path):
             shutil.copy(path, f"{path}.bak")
 
-        fd = os.open(path, os.O_RDWR|os.O_CREAT)
-        with os.fdopen(fd, "w", encoding="utf-8-sig", newline='') as file:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT)
+        with os.fdopen(fd, "w", encoding="utf-8-sig", newline="") as file:
             # _fields is actually part of the public API: typing.NamedTuple is a replacement for collections.NamedTuple,
             # and collections.NamedTuple has explicit documentation for accessing _fields. Same goes for _asdict()
             writer = csv.DictWriter(file, fieldnames=PromptStyle._fields)
             writer.writeheader()
-            writer.writerows(style._asdict() for k,     style in self.styles.items())
+            writer.writerows(style._asdict() for k, style in self.styles.items())

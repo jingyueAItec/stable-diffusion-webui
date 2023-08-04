@@ -1,19 +1,27 @@
-import torch
-from torch.nn.functional import silu
 from types import MethodType
 
-import modules.textual_inversion.textual_inversion
-from modules import devices, sd_hijack_optimizations, shared, script_callbacks, errors
-from modules.hypernetworks import hypernetwork
-from modules.shared import cmd_opts
-from modules import sd_hijack_clip, sd_hijack_open_clip, sd_hijack_unet, sd_hijack_xlmr, xlmr
-
+import ldm.models.diffusion.ddim
+import ldm.models.diffusion.plms
 import ldm.modules.attention
 import ldm.modules.diffusionmodules.model
 import ldm.modules.diffusionmodules.openaimodel
-import ldm.models.diffusion.ddim
-import ldm.models.diffusion.plms
 import ldm.modules.encoders.modules
+import torch
+from torch.nn.functional import silu
+
+import modules.textual_inversion.textual_inversion
+from modules import devices
+from modules import errors
+from modules import script_callbacks
+from modules import sd_hijack_clip
+from modules import sd_hijack_open_clip
+from modules import sd_hijack_optimizations
+from modules import sd_hijack_unet
+from modules import sd_hijack_xlmr
+from modules import shared
+from modules import xlmr
+from modules.hypernetworks import hypernetwork
+from modules.shared import cmd_opts
 
 attention_CrossAttention_forward = ldm.modules.attention.CrossAttention.forward
 diffusionmodules_model_nonlinearity = ldm.modules.diffusionmodules.model.nonlinearity
@@ -51,7 +59,7 @@ def apply_optimizations():
     if len(optimizers) == 0:
         # a script can access the model very early, and optimizations would not be filled by then
         current_optimizer = None
-        return ''
+        return ""
 
     ldm.modules.diffusionmodules.model.nonlinearity = silu
     ldm.modules.diffusionmodules.openaimodel.th = sd_hijack_unet.th
@@ -62,7 +70,9 @@ def apply_optimizations():
 
     selection = shared.opts.cross_attention_optimization
     if selection == "Automatic" and len(optimizers) > 0:
-        matching_optimizer = next(iter([x for x in optimizers if x.cmd_opt and getattr(shared.cmd_opts, x.cmd_opt, False)]), optimizers[0])
+        matching_optimizer = next(
+            iter([x for x in optimizers if x.cmd_opt and getattr(shared.cmd_opts, x.cmd_opt, False)]), optimizers[0]
+        )
     else:
         matching_optimizer = next(iter([x for x in optimizers if x.title() == selection]), None)
 
@@ -74,13 +84,13 @@ def apply_optimizations():
         matching_optimizer = optimizers[0]
 
     if matching_optimizer is not None:
-        print(f"Applying optimization: {matching_optimizer.name}... ", end='')
+        print(f"Applying optimization: {matching_optimizer.name}... ", end="")
         matching_optimizer.apply()
         print("done.")
         current_optimizer = matching_optimizer
         return current_optimizer.name
     else:
-        return ''
+        return ""
 
 
 def undo_optimizations():
@@ -97,45 +107,48 @@ def fix_checkpoint():
 
 
 def weighted_loss(sd_model, pred, target, mean=True):
-    #Calculate the weight normally, but ignore the mean
+    # Calculate the weight normally, but ignore the mean
     loss = sd_model._old_get_loss(pred, target, mean=False)
 
-    #Check if we have weights available
-    weight = getattr(sd_model, '_custom_loss_weight', None)
+    # Check if we have weights available
+    weight = getattr(sd_model, "_custom_loss_weight", None)
     if weight is not None:
         loss *= weight
 
-    #Return the loss, as mean if specified
+    # Return the loss, as mean if specified
     return loss.mean() if mean else loss
+
 
 def weighted_forward(sd_model, x, c, w, *args, **kwargs):
     try:
-        #Temporarily append weights to a place accessible during loss calc
+        # Temporarily append weights to a place accessible during loss calc
         sd_model._custom_loss_weight = w
 
-        #Replace 'get_loss' with a weight-aware one. Otherwise we need to reimplement 'forward' completely
-        #Keep 'get_loss', but don't overwrite the previous old_get_loss if it's already set
-        if not hasattr(sd_model, '_old_get_loss'):
+        # Replace 'get_loss' with a weight-aware one. Otherwise we need to reimplement 'forward' completely
+        # Keep 'get_loss', but don't overwrite the previous old_get_loss if it's already set
+        if not hasattr(sd_model, "_old_get_loss"):
             sd_model._old_get_loss = sd_model.get_loss
         sd_model.get_loss = MethodType(weighted_loss, sd_model)
 
-        #Run the standard forward function, but with the patched 'get_loss'
+        # Run the standard forward function, but with the patched 'get_loss'
         return sd_model.forward(x, c, *args, **kwargs)
     finally:
         try:
-            #Delete temporary weights if appended
+            # Delete temporary weights if appended
             del sd_model._custom_loss_weight
         except AttributeError:
             pass
 
-        #If we have an old loss function, reset the loss function to the original one
-        if hasattr(sd_model, '_old_get_loss'):
+        # If we have an old loss function, reset the loss function to the original one
+        if hasattr(sd_model, "_old_get_loss"):
             sd_model.get_loss = sd_model._old_get_loss
             del sd_model._old_get_loss
 
+
 def apply_weighted_forward(sd_model):
-    #Add new function 'weighted_forward' that can be called to calc weighted loss
+    # Add new function 'weighted_forward' that can be called to calc weighted loss
     sd_model.weighted_forward = MethodType(weighted_forward, sd_model)
+
 
 def undo_weighted_forward(sd_model):
     try:
@@ -176,7 +189,9 @@ class StableDiffusionModelHijack:
             m.cond_stage_model = sd_hijack_clip.FrozenCLIPEmbedderWithCustomWords(m.cond_stage_model, self)
 
         elif type(m.cond_stage_model) == ldm.modules.encoders.modules.FrozenOpenCLIPEmbedder:
-            m.cond_stage_model.model.token_embedding = EmbeddingsWithFixes(m.cond_stage_model.model.token_embedding, self)
+            m.cond_stage_model.model.token_embedding = EmbeddingsWithFixes(
+                m.cond_stage_model.model.token_embedding, self
+            )
             m.cond_stage_model = sd_hijack_open_clip.FrozenOpenCLIPEmbedderWithCustomWords(m.cond_stage_model, self)
 
         apply_weighted_forward(m)
@@ -224,7 +239,7 @@ class StableDiffusionModelHijack:
         self.circular_enabled = enable
 
         for layer in [layer for layer in self.layers if type(layer) == torch.nn.Conv2d]:
-            layer.padding_mode = 'circular' if enable else 'zeros'
+            layer.padding_mode = "circular" if enable else "zeros"
 
     def clear_comments(self):
         self.comments = []
@@ -262,7 +277,7 @@ class EmbeddingsWithFixes(torch.nn.Module):
             for offset, embedding in fixes:
                 emb = devices.cond_cast_unet(embedding.vec)
                 emb_len = min(tensor.shape[0] - offset - 1, emb.shape[0])
-                tensor = torch.cat([tensor[0:offset + 1], emb[0:emb_len], tensor[offset + 1 + emb_len:]])
+                tensor = torch.cat([tensor[0 : offset + 1], emb[0:emb_len], tensor[offset + 1 + emb_len :]])
 
             vecs.append(tensor)
 
@@ -273,7 +288,7 @@ def add_circular_option_to_conv_2d():
     conv2d_constructor = torch.nn.Conv2d.__init__
 
     def conv2d_constructor_circular(self, *args, **kwargs):
-        return conv2d_constructor(self, *args, padding_mode='circular', **kwargs)
+        return conv2d_constructor(self, *args, padding_mode="circular", **kwargs)
 
     torch.nn.Conv2d.__init__ = conv2d_constructor_circular
 
@@ -288,7 +303,7 @@ def register_buffer(self, name, attr):
 
     if type(attr) == torch.Tensor:
         if attr.device != devices.device:
-            attr = attr.to(device=devices.device, dtype=(torch.float32 if devices.device.type == 'mps' else None))
+            attr = attr.to(device=devices.device, dtype=(torch.float32 if devices.device.type == "mps" else None))
 
     setattr(self, name, attr)
 

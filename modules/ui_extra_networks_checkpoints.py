@@ -1,13 +1,15 @@
-import html
 import json
 import os
 
-from modules import shared, ui_extra_networks, sd_models
+import html
+from modules import sd_models
+from modules import shared
+from modules import ui_extra_networks
 
 
 class ExtraNetworksPageCheckpoints(ui_extra_networks.ExtraNetworksPage):
     def __init__(self):
-        super().__init__('Checkpoints')
+        super().__init__("Checkpoints")
 
     def refresh(self):
         shared.refresh_checkpoints()
@@ -28,4 +30,3 @@ class ExtraNetworksPageCheckpoints(ui_extra_networks.ExtraNetworksPage):
 
     def allowed_directories_for_previews(self):
         return [v for v in [shared.cmd_opts.ckpt_dir, sd_models.model_path] if v is not None]
-
