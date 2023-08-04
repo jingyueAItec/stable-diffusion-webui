@@ -1,13 +1,44 @@
-import os
-from PIL import Image, ImageOps
 import math
-import tqdm
+import os
 
-from modules import paths, shared, images, deepbooru
+import tqdm
+from PIL import Image
+from PIL import ImageOps
+
+from modules import deepbooru
+from modules import images
+from modules import paths
+from modules import shared
 from modules.textual_inversion import autocrop
 
 
-def preprocess(id_task, process_src, process_dst, process_width, process_height, preprocess_txt_action, process_keep_original_size, process_flip, process_split, process_caption, process_caption_deepbooru=False, split_threshold=0.5, overlap_ratio=0.2, process_focal_crop=False, process_focal_crop_face_weight=0.9, process_focal_crop_entropy_weight=0.3, process_focal_crop_edges_weight=0.5, process_focal_crop_debug=False, process_multicrop=None, process_multicrop_mindim=None, process_multicrop_maxdim=None, process_multicrop_minarea=None, process_multicrop_maxarea=None, process_multicrop_objective=None, process_multicrop_threshold=None):
+def preprocess(
+    id_task,
+    process_src,
+    process_dst,
+    process_width,
+    process_height,
+    preprocess_txt_action,
+    process_keep_original_size,
+    process_flip,
+    process_split,
+    process_caption,
+    process_caption_deepbooru=False,
+    split_threshold=0.5,
+    overlap_ratio=0.2,
+    process_focal_crop=False,
+    process_focal_crop_face_weight=0.9,
+    process_focal_crop_entropy_weight=0.3,
+    process_focal_crop_edges_weight=0.5,
+    process_focal_crop_debug=False,
+    process_multicrop=None,
+    process_multicrop_mindim=None,
+    process_multicrop_maxdim=None,
+    process_multicrop_minarea=None,
+    process_multicrop_maxarea=None,
+    process_multicrop_objective=None,
+    process_multicrop_threshold=None,
+):
     try:
         if process_caption:
             shared.interrogator.load()
@@ -15,7 +46,32 @@ def preprocess(id_task, process_src, process_dst, process_width, process_height,
         if process_caption_deepbooru:
             deepbooru.model.start()
 
-        preprocess_work(process_src, process_dst, process_width, process_height, preprocess_txt_action, process_keep_original_size, process_flip, process_split, process_caption, process_caption_deepbooru, split_threshold, overlap_ratio, process_focal_crop, process_focal_crop_face_weight, process_focal_crop_entropy_weight, process_focal_crop_edges_weight, process_focal_crop_debug, process_multicrop, process_multicrop_mindim, process_multicrop_maxdim, process_multicrop_minarea, process_multicrop_maxarea, process_multicrop_objective, process_multicrop_threshold)
+        preprocess_work(
+            process_src,
+            process_dst,
+            process_width,
+            process_height,
+            preprocess_txt_action,
+            process_keep_original_size,
+            process_flip,
+            process_split,
+            process_caption,
+            process_caption_deepbooru,
+            split_threshold,
+            overlap_ratio,
+            process_focal_crop,
+            process_focal_crop_face_weight,
+            process_focal_crop_entropy_weight,
+            process_focal_crop_edges_weight,
+            process_focal_crop_debug,
+            process_multicrop,
+            process_multicrop_mindim,
+            process_multicrop_maxdim,
+            process_multicrop_minarea,
+            process_multicrop_maxarea,
+            process_multicrop_objective,
+            process_multicrop_threshold,
+        )
 
     finally:
 
@@ -58,11 +114,11 @@ def save_pic_with_caption(image, index, params: PreprocessParams, existing_capti
     basename = f"{index:05}-{params.subindex}-{filename_part}"
     image.save(os.path.join(params.dstdir, f"{basename}.png"))
 
-    if params.preprocess_txt_action == 'prepend' and existing_caption:
+    if params.preprocess_txt_action == "prepend" and existing_caption:
         caption = f"{existing_caption} {caption}"
-    elif params.preprocess_txt_action == 'append' and existing_caption:
+    elif params.preprocess_txt_action == "append" and existing_caption:
         caption = f"{caption} {existing_caption}"
-    elif params.preprocess_txt_action == 'copy' and existing_caption:
+    elif params.preprocess_txt_action == "copy" and existing_caption:
         caption = existing_caption
 
     caption = caption.strip()
@@ -104,6 +160,7 @@ def split_pic(image, inverse_xy, width, height, overlap_ratio):
             splitted = image.crop((0, y, to_w, y + to_h))
         yield splitted
 
+
 # not using torchvision.transforms.CenterCrop because it doesn't allow float regions
 def center_crop(image: Image, w: int, h: int):
     iw, ih = image.size
@@ -118,16 +175,46 @@ def center_crop(image: Image, w: int, h: int):
 
 def multicrop_pic(image: Image, mindim, maxdim, minarea, maxarea, objective, threshold):
     iw, ih = image.size
-    err = lambda w, h: 1-(lambda x: x if x < 1 else 1/x)(iw/ih/(w/h))
-    wh = max(((w, h) for w in range(mindim, maxdim+1, 64) for h in range(mindim, maxdim+1, 64)
-        if minarea <= w * h <= maxarea and err(w, h) <= threshold),
-        key= lambda wh: (wh[0]*wh[1], -err(*wh))[::1 if objective=='Maximize area' else -1],
-        default=None
+    err = lambda w, h: 1 - (lambda x: x if x < 1 else 1 / x)(iw / ih / (w / h))
+    wh = max(
+        (
+            (w, h)
+            for w in range(mindim, maxdim + 1, 64)
+            for h in range(mindim, maxdim + 1, 64)
+            if minarea <= w * h <= maxarea and err(w, h) <= threshold
+        ),
+        key=lambda wh: (wh[0] * wh[1], -err(*wh))[:: 1 if objective == "Maximize area" else -1],
+        default=None,
     )
     return wh and center_crop(image, *wh)
 
 
-def preprocess_work(process_src, process_dst, process_width, process_height, preprocess_txt_action, process_keep_original_size, process_flip, process_split, process_caption, process_caption_deepbooru=False, split_threshold=0.5, overlap_ratio=0.2, process_focal_crop=False, process_focal_crop_face_weight=0.9, process_focal_crop_entropy_weight=0.3, process_focal_crop_edges_weight=0.5, process_focal_crop_debug=False, process_multicrop=None, process_multicrop_mindim=None, process_multicrop_maxdim=None, process_multicrop_minarea=None, process_multicrop_maxarea=None, process_multicrop_objective=None, process_multicrop_threshold=None):
+def preprocess_work(
+    process_src,
+    process_dst,
+    process_width,
+    process_height,
+    preprocess_txt_action,
+    process_keep_original_size,
+    process_flip,
+    process_split,
+    process_caption,
+    process_caption_deepbooru=False,
+    split_threshold=0.5,
+    overlap_ratio=0.2,
+    process_focal_crop=False,
+    process_focal_crop_face_weight=0.9,
+    process_focal_crop_entropy_weight=0.3,
+    process_focal_crop_edges_weight=0.5,
+    process_focal_crop_debug=False,
+    process_multicrop=None,
+    process_multicrop_mindim=None,
+    process_multicrop_maxdim=None,
+    process_multicrop_minarea=None,
+    process_multicrop_maxarea=None,
+    process_multicrop_objective=None,
+    process_multicrop_threshold=None,
+):
     width = process_width
     height = process_height
     src = os.path.abspath(process_src)
@@ -135,7 +222,7 @@ def preprocess_work(process_src, process_dst, process_width, process_height, pre
     split_threshold = max(0.0, min(1.0, split_threshold))
     overlap_ratio = max(0.0, min(0.9, overlap_ratio))
 
-    assert src != dst, 'same directory specified as source and destination'
+    assert src != dst, "same directory specified as source and destination"
 
     os.makedirs(dst, exist_ok=True)
 
@@ -172,7 +259,7 @@ def preprocess_work(process_src, process_dst, process_width, process_height, pre
         existing_caption = None
         existing_caption_filename = f"{os.path.splitext(filename)[0]}.txt"
         if os.path.exists(existing_caption_filename):
-            with open(existing_caption_filename, 'r', encoding="utf8") as file:
+            with open(existing_caption_filename, "r", encoding="utf8") as file:
                 existing_caption = file.read()
 
         if shared.state.interrupted:
@@ -198,27 +285,40 @@ def preprocess_work(process_src, process_dst, process_width, process_height, pre
             try:
                 dnn_model_path = autocrop.download_and_cache_models(os.path.join(paths.models_path, "opencv"))
             except Exception as e:
-                print("Unable to load face detection model for auto crop selection. Falling back to lower quality haar method.", e)
+                print(
+                    "Unable to load face detection model for auto crop selection. Falling back to lower quality haar method.",
+                    e,
+                )
 
             autocrop_settings = autocrop.Settings(
-                crop_width = width,
-                crop_height = height,
-                face_points_weight = process_focal_crop_face_weight,
-                entropy_points_weight = process_focal_crop_entropy_weight,
-                corner_points_weight = process_focal_crop_edges_weight,
-                annotate_image = process_focal_crop_debug,
-                dnn_model_path = dnn_model_path,
+                crop_width=width,
+                crop_height=height,
+                face_points_weight=process_focal_crop_face_weight,
+                entropy_points_weight=process_focal_crop_entropy_weight,
+                corner_points_weight=process_focal_crop_edges_weight,
+                annotate_image=process_focal_crop_debug,
+                dnn_model_path=dnn_model_path,
             )
             for focal in autocrop.crop_image(img, autocrop_settings):
                 save_pic(focal, index, params, existing_caption=existing_caption)
             process_default_resize = False
 
         if process_multicrop:
-            cropped = multicrop_pic(img, process_multicrop_mindim, process_multicrop_maxdim, process_multicrop_minarea, process_multicrop_maxarea, process_multicrop_objective, process_multicrop_threshold)
+            cropped = multicrop_pic(
+                img,
+                process_multicrop_mindim,
+                process_multicrop_maxdim,
+                process_multicrop_minarea,
+                process_multicrop_maxarea,
+                process_multicrop_objective,
+                process_multicrop_threshold,
+            )
             if cropped is not None:
                 save_pic(cropped, index, params, existing_caption=existing_caption)
             else:
-                print(f"skipped {img.width}x{img.height} image {filename} (can't find suitable size within error threshold)")
+                print(
+                    f"skipped {img.width}x{img.height} image {filename} (can't find suitable size within error threshold)"
+                )
             process_default_resize = False
 
         if process_keep_original_size:

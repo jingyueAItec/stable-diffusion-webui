@@ -17,7 +17,7 @@ exclude = [
 ignore = [
 	"E501", # Line too long
 	"E731", # Do not assign a `lambda` expression, use a `def`
-	
+
 	"I001", # Import block is un-sorted or un-formatted
 	"C901", # Function is too complex
 	"C408", # Rewrite as a literal

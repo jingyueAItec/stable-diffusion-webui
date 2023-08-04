@@ -1,20 +1,21 @@
 """
 Supports saving and restoring webui and extensions from a known working set of commits
 """
-
+import json
 import os
 import sys
-import traceback
-import json
 import time
+import traceback
+from collections import OrderedDict
+from datetime import datetime
+
+import git
 import tqdm
 
-from datetime import datetime
-from collections import OrderedDict
-import git
-
-from modules import shared, extensions
-from modules.paths_internal import script_path, config_states_dir
+from modules import extensions
+from modules import shared
+from modules.paths_internal import config_states_dir
+from modules.paths_internal import script_path
 
 
 all_config_states = OrderedDict()
@@ -94,7 +95,7 @@ def get_extension_config():
             "commit_hash": ext.commit_hash,
             "commit_date": ext.commit_date,
             "branch": ext.branch,
-            "have_info_from_repo": ext.have_info_from_repo
+            "have_info_from_repo": ext.have_info_from_repo,
         }
 
         ext_config[ext.name] = entry
@@ -107,11 +108,7 @@ def get_config():
     webui_config = get_webui_config()
     ext_config = get_extension_config()
 
-    return {
-        "created_at": creation_time,
-        "webui": webui_config,
-        "extensions": ext_config
-    }
+    return {"created_at": creation_time, "webui": webui_config, "extensions": ext_config}
 
 
 def restore_webui_config(config):
@@ -169,7 +166,9 @@ def restore_extension_config(config):
         if ext.name not in ext_config:
             ext.disabled = True
             disabled.append(ext.name)
-            results.append((ext, current_commit[:8], False, "Saved extension state not found in config, marking as disabled"))
+            results.append(
+                (ext, current_commit[:8], False, "Saved extension state not found in config, marking as disabled")
+            )
             continue
 
         entry = ext_config[ext.name]

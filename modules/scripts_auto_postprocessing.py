@@ -1,4 +1,6 @@
-from modules import scripts, scripts_postprocessing, shared
+from modules import scripts
+from modules import scripts_postprocessing
+from modules import shared
 
 
 class ScriptPostprocessingForMainUI(scripts.Script):
@@ -37,6 +39,10 @@ def create_auto_preprocessing_script_data():
             continue
 
         constructor = lambda s=script: ScriptPostprocessingForMainUI(s.script_class())
-        res.append(scripts.ScriptClassData(script_class=constructor, path=script.path, basedir=script.basedir, module=script.module))
+        res.append(
+            scripts.ScriptClassData(
+                script_class=constructor, path=script.path, basedir=script.basedir, module=script.module
+            )
+        )
 
     return res

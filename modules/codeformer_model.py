@@ -7,7 +7,9 @@ import torch
 
 import modules.face_restoration
 import modules.shared
-from modules import shared, devices, modelloader
+from modules import devices
+from modules import modelloader
+from modules import shared
 from modules.paths import models_path
 
 # codeformer people made a choice to include modified basicsr library to their project which makes
@@ -15,7 +17,7 @@ from modules.paths import models_path
 # I am making a choice to include some files from codeformer to work around this issue.
 model_dir = "Codeformer"
 model_path = os.path.join(models_path, model_dir)
-model_url = 'https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth'
+model_url = "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"
 
 have_codeformer = False
 codeformer = None
@@ -53,20 +55,32 @@ def setup_model(dirname):
                 if self.net is not None and self.face_helper is not None:
                     self.net.to(devices.device_codeformer)
                     return self.net, self.face_helper
-                model_paths = modelloader.load_models(model_path, model_url, self.cmd_dir, download_name='codeformer-v0.1.0.pth', ext_filter=['.pth'])
+                model_paths = modelloader.load_models(
+                    model_path, model_url, self.cmd_dir, download_name="codeformer-v0.1.0.pth", ext_filter=[".pth"]
+                )
                 if len(model_paths) != 0:
                     ckpt_path = model_paths[0]
                 else:
                     print("Unable to load codeformer model.")
                     return None, None
-                net = net_class(dim_embd=512, codebook_size=1024, n_head=8, n_layers=9, connect_list=['32', '64', '128', '256']).to(devices.device_codeformer)
-                checkpoint = torch.load(ckpt_path)['params_ema']
+                net = net_class(
+                    dim_embd=512, codebook_size=1024, n_head=8, n_layers=9, connect_list=["32", "64", "128", "256"]
+                ).to(devices.device_codeformer)
+                checkpoint = torch.load(ckpt_path)["params_ema"]
                 net.load_state_dict(checkpoint)
                 net.eval()
 
-                if hasattr(retinaface, 'device'):
+                if hasattr(retinaface, "device"):
                     retinaface.device = devices.device_codeformer
-                face_helper = FaceRestoreHelper(1, face_size=512, crop_ratio=(1, 1), det_model='retinaface_resnet50', save_ext='png', use_parse=True, device=devices.device_codeformer)
+                face_helper = FaceRestoreHelper(
+                    1,
+                    face_size=512,
+                    crop_ratio=(1, 1),
+                    det_model="retinaface_resnet50",
+                    save_ext="png",
+                    use_parse=True,
+                    device=devices.device_codeformer,
+                )
 
                 self.net = net
                 self.face_helper = face_helper
@@ -95,21 +109,23 @@ def setup_model(dirname):
                 self.face_helper.align_warp_face()
 
                 for cropped_face in self.face_helper.cropped_faces:
-                    cropped_face_t = img2tensor(cropped_face / 255., bgr2rgb=True, float32=True)
+                    cropped_face_t = img2tensor(cropped_face / 255.0, bgr2rgb=True, float32=True)
                     normalize(cropped_face_t, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
                     cropped_face_t = cropped_face_t.unsqueeze(0).to(devices.device_codeformer)
 
                     try:
                         with torch.no_grad():
-                            output = self.net(cropped_face_t, w=w if w is not None else shared.opts.code_former_weight, adain=True)[0]
+                            output = self.net(
+                                cropped_face_t, w=w if w is not None else shared.opts.code_former_weight, adain=True
+                            )[0]
                             restored_face = tensor2img(output, rgb2bgr=True, min_max=(-1, 1))
                         del output
                         torch.cuda.empty_cache()
                     except Exception as error:
-                        print(f'\tFailed inference for CodeFormer: {error}', file=sys.stderr)
+                        print(f"\tFailed inference for CodeFormer: {error}", file=sys.stderr)
                         restored_face = tensor2img(cropped_face_t, rgb2bgr=True, min_max=(-1, 1))
 
-                    restored_face = restored_face.astype('uint8')
+                    restored_face = restored_face.astype("uint8")
                     self.face_helper.add_restored_face(restored_face)
 
                 self.face_helper.get_inverse_affine(None)
@@ -118,7 +134,13 @@ def setup_model(dirname):
                 restored_img = restored_img[:, :, ::-1]
 
                 if original_resolution != restored_img.shape[0:2]:
-                    restored_img = cv2.resize(restored_img, (0, 0), fx=original_resolution[1]/restored_img.shape[1], fy=original_resolution[0]/restored_img.shape[0], interpolation=cv2.INTER_LINEAR)
+                    restored_img = cv2.resize(
+                        restored_img,
+                        (0, 0),
+                        fx=original_resolution[1] / restored_img.shape[1],
+                        fy=original_resolution[0] / restored_img.shape[0],
+                        interpolation=cv2.INTER_LINEAR,
+                    )
 
                 self.face_helper.clean_all()
 
@@ -138,4 +160,5 @@ def setup_model(dirname):
         print("Error setting up CodeFormer:", file=sys.stderr)
         print(traceback.format_exc(), file=sys.stderr)
 
-   # sys.path = stored_sys_path
+
+# sys.path = stored_sys_path

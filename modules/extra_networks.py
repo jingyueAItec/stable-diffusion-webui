@@ -16,6 +16,7 @@ def register_extra_network(extra_network):
 
 def register_default_extra_networks():
     from modules.extra_networks_hypernet import ExtraNetworkHypernet
+
     register_extra_network(ExtraNetworkHypernet())
 
 
@@ -26,7 +27,7 @@ class ExtraNetworkParams:
         self.named = {}
 
         for item in self.items:
-            parts = item.split('=', 2) if isinstance(item, str) else [item]
+            parts = item.split("=", 2) if isinstance(item, str) else [item]
             if len(parts) == 2:
                 self.named[parts[0]] = parts[1]
             else:
@@ -158,4 +159,3 @@ def parse_prompts(prompts):
         res.append(updated_prompt)
 
     return res, extra_data
-
