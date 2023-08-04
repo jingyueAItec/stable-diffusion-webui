@@ -1,7 +1,7 @@
+import importlib.util
 import os
 import sys
 import traceback
-import importlib.util
 
 
 def load_module(path):
@@ -23,7 +23,7 @@ def preload_extensions(extensions_dir, parser):
 
         try:
             module = load_module(preload_script)
-            if hasattr(module, 'preload'):
+            if hasattr(module, "preload"):
                 module.preload(parser)
 
         except Exception:

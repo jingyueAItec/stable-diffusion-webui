@@ -1,7 +1,9 @@
 import os
+
 import gradio as gr
 
-from modules import errors, shared
+from modules import errors
+from modules import shared
 
 
 class PostprocessedImage:
@@ -46,8 +48,6 @@ class ScriptPostprocessing:
         pass
 
 
-
-
 def wrap_call(func, filename, funcname, *args, default=None, **kwargs):
     try:
         res = func(*args, **kwargs)
@@ -90,6 +90,7 @@ class ScriptPostprocessingRunner:
     def scripts_in_preferred_order(self):
         if self.scripts is None:
             import modules.scripts
+
             self.initialize_scripts(modules.scripts.postprocessing_scripts_data)
 
         scripts_order = shared.opts.postprocessing_operation_order
@@ -101,7 +102,10 @@ class ScriptPostprocessingRunner:
 
             return len(self.scripts)
 
-        script_scores = {script.name: (script_score(script.name), script.order, script.name, original_index) for original_index, script in enumerate(self.scripts)}
+        script_scores = {
+            script.name: (script_score(script.name), script.order, script.name, original_index)
+            for original_index, script in enumerate(self.scripts)
+        }
 
         return sorted(self.scripts, key=lambda x: script_scores[x.name])
 
@@ -121,7 +125,7 @@ class ScriptPostprocessingRunner:
         for script in self.scripts_in_preferred_order():
             shared.state.job = script.name
 
-            script_args = args[script.args_from:script.args_to]
+            script_args = args[script.args_from : script.args_to]
 
             process_args = {}
             for (name, _component), value in zip(script.controls.items(), script_args):
@@ -149,4 +153,3 @@ class ScriptPostprocessingRunner:
     def image_changed(self):
         for script in self.scripts_in_preferred_order():
             script.image_changed()
-

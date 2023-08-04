@@ -1,8 +1,12 @@
 import os
 import sys
-from modules.paths_internal import models_path, script_path, data_path, extensions_dir, extensions_builtin_dir  # noqa: F401
 
 import modules.safe  # noqa: F401
+from modules.paths_internal import data_path
+from modules.paths_internal import extensions_builtin_dir
+from modules.paths_internal import extensions_dir
+from modules.paths_internal import models_path
+from modules.paths_internal import script_path
 
 
 # data_path = cmd_opts_pre.data
@@ -10,20 +14,24 @@ sys.path.insert(0, script_path)
 
 # search for directory of stable diffusion in following places
 sd_path = None
-possible_sd_paths = [os.path.join(script_path, 'repositories/stable-diffusion-stability-ai'), '.', os.path.dirname(script_path)]
+possible_sd_paths = [
+    os.path.join(script_path, "repositories/stable-diffusion-stability-ai"),
+    ".",
+    os.path.dirname(script_path),
+]
 for possible_sd_path in possible_sd_paths:
-    if os.path.exists(os.path.join(possible_sd_path, 'ldm/models/diffusion/ddpm.py')):
+    if os.path.exists(os.path.join(possible_sd_path, "ldm/models/diffusion/ddpm.py")):
         sd_path = os.path.abspath(possible_sd_path)
         break
 
 assert sd_path is not None, f"Couldn't find Stable Diffusion in any of: {possible_sd_paths}"
 
 path_dirs = [
-    (sd_path, 'ldm', 'Stable Diffusion', []),
-    (os.path.join(sd_path, '../taming-transformers'), 'taming', 'Taming Transformers', []),
-    (os.path.join(sd_path, '../CodeFormer'), 'inference_codeformer.py', 'CodeFormer', []),
-    (os.path.join(sd_path, '../BLIP'), 'models/blip.py', 'BLIP', []),
-    (os.path.join(sd_path, '../k-diffusion'), 'k_diffusion/sampling.py', 'k_diffusion', ["atstart"]),
+    (sd_path, "ldm", "Stable Diffusion", []),
+    (os.path.join(sd_path, "../taming-transformers"), "taming", "Taming Transformers", []),
+    (os.path.join(sd_path, "../CodeFormer"), "inference_codeformer.py", "CodeFormer", []),
+    (os.path.join(sd_path, "../BLIP"), "models/blip.py", "BLIP", []),
+    (os.path.join(sd_path, "../k-diffusion"), "k_diffusion/sampling.py", "k_diffusion", ["atstart"]),
 ]
 
 paths = {}

@@ -6,7 +6,9 @@ import traceback
 import git
 
 from modules import shared
-from modules.paths_internal import extensions_dir, extensions_builtin_dir, script_path  # noqa: F401
+from modules.paths_internal import extensions_builtin_dir
+from modules.paths_internal import extensions_dir
+from modules.paths_internal import script_path
 
 extensions = []
 
@@ -30,12 +32,12 @@ class Extension:
         self.name = name
         self.path = path
         self.enabled = enabled
-        self.status = ''
+        self.status = ""
         self.can_update = False
         self.is_builtin = is_builtin
-        self.commit_hash = ''
+        self.commit_hash = ""
         self.commit_date = None
-        self.version = ''
+        self.version = ""
         self.branch = None
         self.remote = None
         self.have_info_from_repo = False
@@ -63,7 +65,7 @@ class Extension:
             self.remote = None
         else:
             try:
-                self.status = 'unknown'
+                self.status = "unknown"
                 self.remote = next(repo.remote().urls, None)
                 commit = repo.head.commit
                 self.commit_date = commit.committed_date
@@ -102,7 +104,7 @@ class Extension:
                 return
 
         try:
-            origin = repo.rev_parse('origin')
+            origin = repo.rev_parse("origin")
             if repo.head.commit != origin:
                 self.can_update = True
                 self.status = "behind HEAD"
@@ -115,7 +117,7 @@ class Extension:
         self.can_update = False
         self.status = "latest"
 
-    def fetch_and_reset_hard(self, commit='origin'):
+    def fetch_and_reset_hard(self, commit="origin"):
         repo = git.Repo(self.path)
         # Fix: `error: Your local changes to the following files would be overwritten by merge`,
         # because WSL2 Docker set 755 file permissions instead of 644, this results to the error.
@@ -131,9 +133,9 @@ def list_extensions():
         return
 
     if shared.opts.disable_all_extensions == "all":
-        print("*** \"Disable all extensions\" option was set, will not load any extensions ***")
+        print('*** "Disable all extensions" option was set, will not load any extensions ***')
     elif shared.opts.disable_all_extensions == "extra":
-        print("*** \"Disable all extensions\" option was set, will only load built-in extensions ***")
+        print('*** "Disable all extensions" option was set, will only load built-in extensions ***')
 
     extension_paths = []
     for dirname in [extensions_dir, extensions_builtin_dir]:
@@ -148,5 +150,7 @@ def list_extensions():
             extension_paths.append((extension_dirname, path, dirname == extensions_builtin_dir))
 
     for dirname, path, is_builtin in extension_paths:
-        extension = Extension(name=dirname, path=path, enabled=dirname not in shared.opts.disabled_extensions, is_builtin=is_builtin)
+        extension = Extension(
+            name=dirname, path=path, enabled=dirname not in shared.opts.disabled_extensions, is_builtin=is_builtin
+        )
         extensions.append(extension)

@@ -1,6 +1,7 @@
 import re
 from collections import namedtuple
 from typing import List
+
 import lark
 
 # a prompt like this: "fantasy landscape with a [mountain:lake:0.25] and [an oak:a christmas tree:0.75][ in foreground::0.6][ in background:0.25] [shoddy:masterful:0.5]"
@@ -11,7 +12,8 @@ import lark
 # [75, 'fantasy landscape with a lake and an oak in background masterful']
 # [100, 'fantasy landscape with a lake and a christmas tree in background masterful']
 
-schedule_parser = lark.Lark(r"""
+schedule_parser = lark.Lark(
+    r"""
 !start: (prompt | /[][():]/+)*
 prompt: (emphasized | scheduled | alternate | plain | WHITESPACE)*
 !emphasized: "(" prompt ")"
@@ -22,7 +24,9 @@ alternate: "[" prompt ("|" prompt)+ "]"
 WHITESPACE: /\s+/
 plain: /([^\\\[\]():|]|\\.)+/
 %import common.SIGNED_NUMBER -> NUMBER
-""")
+"""
+)
+
 
 def get_learned_conditioning_prompt_schedules(prompts, steps):
     """
@@ -65,7 +69,7 @@ def get_learned_conditioning_prompt_schedules(prompts, steps):
                 res.append(tree.children[-1])
 
             def alternate(self, tree):
-                res.extend(range(1, steps+1))
+                res.extend(range(1, steps + 1))
 
         CollectSteps().visit(tree)
         return sorted(set(res))
@@ -75,8 +79,10 @@ def get_learned_conditioning_prompt_schedules(prompts, steps):
             def scheduled(self, args):
                 before, after, _, when = args
                 yield before or () if step <= when else after
+
             def alternate(self, args):
-                yield next(args[(step - 1)%len(args)])
+                yield next(args[(step - 1) % len(args)])
+
             def start(self, args):
                 def flatten(x):
                     if type(x) == str:
@@ -84,12 +90,16 @@ def get_learned_conditioning_prompt_schedules(prompts, steps):
                     else:
                         for gen in x:
                             yield from flatten(gen)
-                return ''.join(flatten(args))
+
+                return "".join(flatten(args))
+
             def plain(self, args):
                 yield args[0].value
+
             def __default__(self, data, children, meta):
                 for child in children:
                     yield child
+
         return AtStep().transform(tree)
 
     def get_schedule(prompt):
@@ -98,6 +108,7 @@ def get_learned_conditioning_prompt_schedules(prompts, steps):
         except lark.exceptions.LarkError:
             if 0:
                 import traceback
+
                 traceback.print_exc()
             return [[steps, prompt]]
         return [[t, at_step(t, tree)] for t in collect_steps(steps, tree)]
@@ -155,6 +166,7 @@ def get_learned_conditioning(model, prompts, steps):
 re_AND = re.compile(r"\bAND\b")
 re_weight = re.compile(r"^(.*?)(?:\s*:\s*([-+]?(?:\d+\.?|\d*\.\d+)))?\s*$")
 
+
 def get_multicond_prompt_list(prompts):
     res_indexes = []
 
@@ -195,6 +207,7 @@ class MulticondLearnedConditioning:
     def __init__(self, shape, batch):
         self.shape: tuple = shape  # the shape field is needed to send this object to DDIM/PLMS
         self.batch: List[List[ComposableScheduledPromptConditioning]] = batch
+
 
 def get_multicond_learned_conditioning(model, prompts, steps) -> MulticondLearnedConditioning:
     """same as get_learned_conditioning, but returns a list of ScheduledPromptConditioning along with the weight objects for each prompt.
@@ -261,7 +274,8 @@ def reconstruct_multicond_batch(c: MulticondLearnedConditioning, current_step):
     return conds_list, torch.stack(tensors).to(device=param.device, dtype=param.dtype)
 
 
-re_attention = re.compile(r"""
+re_attention = re.compile(
+    r"""
 \\\(|
 \\\)|
 \\\[|
@@ -275,9 +289,12 @@ re_attention = re.compile(r"""
 ]|
 [^\\()\[\]:]+|
 :
-""", re.X)
+""",
+    re.X,
+)
 
 re_break = re.compile(r"\s*\bBREAK\b\s*", re.S)
+
 
 def parse_prompt_attention(text):
     """
@@ -330,17 +347,17 @@ def parse_prompt_attention(text):
         text = m.group(0)
         weight = m.group(1)
 
-        if text.startswith('\\'):
+        if text.startswith("\\"):
             res.append([text[1:], 1.0])
-        elif text == '(':
+        elif text == "(":
             round_brackets.append(len(res))
-        elif text == '[':
+        elif text == "[":
             square_brackets.append(len(res))
         elif weight is not None and len(round_brackets) > 0:
             multiply_range(round_brackets.pop(), float(weight))
-        elif text == ')' and len(round_brackets) > 0:
+        elif text == ")" and len(round_brackets) > 0:
             multiply_range(round_brackets.pop(), round_bracket_multiplier)
-        elif text == ']' and len(square_brackets) > 0:
+        elif text == "]" and len(square_brackets) > 0:
             multiply_range(square_brackets.pop(), square_bracket_multiplier)
         else:
             parts = re.split(re_break, text)
@@ -369,8 +386,10 @@ def parse_prompt_attention(text):
 
     return res
 
+
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
 else:
     import torch  # doctest faster

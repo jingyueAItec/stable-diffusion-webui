@@ -5,9 +5,12 @@ import os
 import re
 
 import gradio as gr
-from modules.paths import data_path
-from modules import shared, ui_tempdir, script_callbacks
 from PIL import Image
+
+from modules import script_callbacks
+from modules import shared
+from modules import ui_tempdir
+from modules.paths import data_path
 
 re_param_code = r'\s*([\w ]+):\s*("(?:\\"[^,]|\\"|\\|[^\"])+"|[^,]*)(?:,|$)'
 re_param = re.compile(re_param_code)
@@ -20,7 +23,16 @@ registered_param_bindings = []
 
 
 class ParamBinding:
-    def __init__(self, paste_button, tabname, source_text_component=None, source_image_component=None, source_tabname=None, override_settings_component=None, paste_field_names=None):
+    def __init__(
+        self,
+        paste_button,
+        tabname,
+        source_text_component=None,
+        source_image_component=None,
+        source_tabname=None,
+        override_settings_component=None,
+        paste_field_names=None,
+    ):
         self.paste_button = paste_button
         self.tabname = tabname
         self.source_text_component = source_text_component
@@ -35,7 +47,7 @@ def reset():
 
 
 def quote(text):
-    if ',' not in str(text) and '\n' not in str(text) and ':' not in str(text):
+    if "," not in str(text) and "\n" not in str(text) and ":" not in str(text):
         return text
 
     return json.dumps(text, ensure_ascii=False)
@@ -61,9 +73,9 @@ def image_from_url_text(filedata):
     if type(filedata) == dict and filedata.get("is_file", False):
         filename = filedata["name"]
         is_in_right_dir = ui_tempdir.check_tmp_file(shared.demo, filename)
-        assert is_in_right_dir, 'trying to open image file outside of allowed directories'
+        assert is_in_right_dir, "trying to open image file outside of allowed directories"
 
-        filename = filename.rsplit('?', 1)[0]
+        filename = filename.rsplit("?", 1)[0]
         return Image.open(filename)
 
     if type(filedata) == list:
@@ -73,21 +85,26 @@ def image_from_url_text(filedata):
         filedata = filedata[0]
 
     if filedata.startswith("data:image/png;base64,"):
-        filedata = filedata[len("data:image/png;base64,"):]
+        filedata = filedata[len("data:image/png;base64,") :]
 
-    filedata = base64.decodebytes(filedata.encode('utf-8'))
+    filedata = base64.decodebytes(filedata.encode("utf-8"))
     image = Image.open(io.BytesIO(filedata))
     return image
 
 
 def add_paste_fields(tabname, init_img, fields, override_settings_component=None):
-    paste_fields[tabname] = {"init_img": init_img, "fields": fields, "override_settings_component": override_settings_component}
+    paste_fields[tabname] = {
+        "init_img": init_img,
+        "fields": fields,
+        "override_settings_component": override_settings_component,
+    }
 
     # backwards compatibility for existing extensions
     import modules.ui
-    if tabname == 'txt2img':
+
+    if tabname == "txt2img":
         modules.ui.txt2img_paste_fields = fields
-    elif tabname == 'img2img':
+    elif tabname == "img2img":
         modules.ui.img2img_paste_fields = fields
 
 
@@ -104,7 +121,15 @@ def bind_buttons(buttons, send_image, send_generate_info):
         source_text_component = send_generate_info if isinstance(send_generate_info, gr.components.Component) else None
         source_tabname = send_generate_info if isinstance(send_generate_info, str) else None
 
-        register_paste_params_button(ParamBinding(paste_button=button, tabname=tabname, source_text_component=source_text_component, source_image_component=send_image, source_tabname=source_tabname))
+        register_paste_params_button(
+            ParamBinding(
+                paste_button=button,
+                tabname=tabname,
+                source_text_component=source_text_component,
+                source_image_component=send_image,
+                source_tabname=source_tabname,
+            )
+        )
 
 
 def register_paste_params_button(binding: ParamBinding):
@@ -116,10 +141,16 @@ def connect_paste_params_buttons():
     for binding in registered_param_bindings:
         destination_image_component = paste_fields[binding.tabname]["init_img"]
         fields = paste_fields[binding.tabname]["fields"]
-        override_settings_component = binding.override_settings_component or paste_fields[binding.tabname]["override_settings_component"]
+        override_settings_component = (
+            binding.override_settings_component or paste_fields[binding.tabname]["override_settings_component"]
+        )
 
-        destination_width_component = next(iter([field for field, name in fields if name == "Size-1"] if fields else []), None)
-        destination_height_component = next(iter([field for field, name in fields if name == "Size-2"] if fields else []), None)
+        destination_width_component = next(
+            iter([field for field, name in fields if name == "Size-1"] if fields else []), None
+        )
+        destination_height_component = next(
+            iter([field for field, name in fields if name == "Size-2"] if fields else []), None
+        )
 
         if binding.source_image_component and destination_image_component:
             if isinstance(binding.source_image_component, gr.Gallery):
@@ -133,18 +164,32 @@ def connect_paste_params_buttons():
                 fn=func,
                 _js=jsfunc,
                 inputs=[binding.source_image_component],
-                outputs=[destination_image_component, destination_width_component, destination_height_component] if destination_width_component else [destination_image_component],
+                outputs=[destination_image_component, destination_width_component, destination_height_component]
+                if destination_width_component
+                else [destination_image_component],
                 show_progress=False,
             )
 
         if binding.source_text_component is not None and fields is not None:
-            connect_paste(binding.paste_button, fields, binding.source_text_component, override_settings_component, binding.tabname)
+            connect_paste(
+                binding.paste_button,
+                fields,
+                binding.source_text_component,
+                override_settings_component,
+                binding.tabname,
+            )
 
         if binding.source_tabname is not None and fields is not None:
-            paste_field_names = ['Prompt', 'Negative prompt', 'Steps', 'Face restoration'] + (["Seed"] if shared.opts.send_seed else []) + binding.paste_field_names
+            paste_field_names = (
+                ["Prompt", "Negative prompt", "Steps", "Face restoration"]
+                + (["Seed"] if shared.opts.send_seed else [])
+                + binding.paste_field_names
+            )
             binding.paste_button.click(
                 fn=lambda *x: x,
-                inputs=[field for field, name in paste_fields[binding.source_tabname]["fields"] if name in paste_field_names],
+                inputs=[
+                    field for field, name in paste_fields[binding.source_tabname]["fields"] if name in paste_field_names
+                ],
                 outputs=[field for field, name in fields if name in paste_field_names],
                 show_progress=False,
             )
@@ -172,7 +217,6 @@ def send_image_and_dimensions(x):
         h = gr.update()
 
     return img, w, h
-
 
 
 def find_hypernetwork_key(hypernet_name, hypernet_hash=None):
@@ -203,16 +247,16 @@ def restore_old_hires_fix_params(res):
     """for infotexts that specify old First pass size parameter, convert it into
     width, height, and hr scale"""
 
-    firstpass_width = res.get('First pass size-1', None)
-    firstpass_height = res.get('First pass size-2', None)
+    firstpass_width = res.get("First pass size-1", None)
+    firstpass_height = res.get("First pass size-2", None)
 
     if shared.opts.use_old_hires_fix_width_height:
         hires_width = int(res.get("Hires resize-1", 0))
         hires_height = int(res.get("Hires resize-2", 0))
 
         if hires_width and hires_height:
-            res['Size-1'] = hires_width
-            res['Size-2'] = hires_height
+            res["Size-1"] = hires_width
+            res["Size-2"] = hires_height
             return
 
     if firstpass_width is None or firstpass_height is None:
@@ -224,23 +268,24 @@ def restore_old_hires_fix_params(res):
 
     if firstpass_width == 0 or firstpass_height == 0:
         from modules import processing
+
         firstpass_width, firstpass_height = processing.old_hires_fix_first_pass_dimensions(width, height)
 
-    res['Size-1'] = firstpass_width
-    res['Size-2'] = firstpass_height
-    res['Hires resize-1'] = width
-    res['Hires resize-2'] = height
+    res["Size-1"] = firstpass_width
+    res["Size-2"] = firstpass_height
+    res["Hires resize-1"] = width
+    res["Hires resize-2"] = height
 
 
 def parse_generation_parameters(x: str):
     """parses generation parameters string, the one you see in text field under the picture in UI:
-```
-girl with an artist's beret, determined, blue eyes, desert scene, computer monitors, heavy makeup, by Alphonse Mucha and Charlie Bowater, ((eyeshadow)), (coquettish), detailed, intricate
-Negative prompt: ugly, fat, obese, chubby, (((deformed))), [blurry], bad anatomy, disfigured, poorly drawn face, mutation, mutated, (extra_limb), (ugly), (poorly drawn hands), messy drawing
-Steps: 20, Sampler: Euler a, CFG scale: 7, Seed: 965400086, Size: 512x512, Model hash: 45dee52b
-```
+    ```
+    girl with an artist's beret, determined, blue eyes, desert scene, computer monitors, heavy makeup, by Alphonse Mucha and Charlie Bowater, ((eyeshadow)), (coquettish), detailed, intricate
+    Negative prompt: ugly, fat, obese, chubby, (((deformed))), [blurry], bad anatomy, disfigured, poorly drawn face, mutation, mutated, (extra_limb), (ugly), (poorly drawn hands), messy drawing
+    Steps: 20, Sampler: Euler a, CFG scale: 7, Seed: 965400086, Size: 512x512, Model hash: 45dee52b
+    ```
 
-    returns a dict with field values
+        returns a dict with field values
     """
 
     res = {}
@@ -253,7 +298,7 @@ Steps: 20, Sampler: Euler a, CFG scale: 7, Seed: 965400086, Size: 512x512, Model
     *lines, lastline = x.strip().split("\n")
     if len(re_param.findall(lastline)) < 3:
         lines.append(lastline)
-        lastline = ''
+        lastline = ""
 
     for line in lines:
         line = line.strip()
@@ -312,24 +357,26 @@ Steps: 20, Sampler: Euler a, CFG scale: 7, Seed: 965400086, Size: 512x512, Model
 settings_map = {}
 
 
-
 infotext_to_setting_name_mapping = [
-    ('Clip skip', 'CLIP_stop_at_last_layers', ),
-    ('Conditional mask weight', 'inpainting_mask_weight'),
-    ('Model hash', 'sd_model_checkpoint'),
-    ('ENSD', 'eta_noise_seed_delta'),
-    ('Noise multiplier', 'initial_noise_multiplier'),
-    ('Eta', 'eta_ancestral'),
-    ('Eta DDIM', 'eta_ddim'),
-    ('Discard penultimate sigma', 'always_discard_next_to_last_sigma'),
-    ('UniPC variant', 'uni_pc_variant'),
-    ('UniPC skip type', 'uni_pc_skip_type'),
-    ('UniPC order', 'uni_pc_order'),
-    ('UniPC lower order final', 'uni_pc_lower_order_final'),
-    ('Token merging ratio', 'token_merging_ratio'),
-    ('Token merging ratio hr', 'token_merging_ratio_hr'),
-    ('RNG', 'randn_source'),
-    ('NGMS', 's_min_uncond'),
+    (
+        "Clip skip",
+        "CLIP_stop_at_last_layers",
+    ),
+    ("Conditional mask weight", "inpainting_mask_weight"),
+    ("Model hash", "sd_model_checkpoint"),
+    ("ENSD", "eta_noise_seed_delta"),
+    ("Noise multiplier", "initial_noise_multiplier"),
+    ("Eta", "eta_ancestral"),
+    ("Eta DDIM", "eta_ddim"),
+    ("Discard penultimate sigma", "always_discard_next_to_last_sigma"),
+    ("UniPC variant", "uni_pc_variant"),
+    ("UniPC skip type", "uni_pc_skip_type"),
+    ("UniPC order", "uni_pc_order"),
+    ("UniPC lower order final", "uni_pc_lower_order_final"),
+    ("Token merging ratio", "token_merging_ratio"),
+    ("Token merging ratio hr", "token_merging_ratio_hr"),
+    ("RNG", "randn_source"),
+    ("NGMS", "s_min_uncond"),
 ]
 
 
@@ -400,6 +447,7 @@ def connect_paste(button, paste_fields, input_comp, override_settings_component,
         return res
 
     if override_settings_component is not None:
+
         def paste_settings(params):
             vals = {}
 
@@ -438,5 +486,3 @@ def connect_paste(button, paste_fields, input_comp, override_settings_component,
         outputs=[],
         show_progress=False,
     )
-
-
