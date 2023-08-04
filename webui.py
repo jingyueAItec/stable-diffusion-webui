@@ -334,49 +334,6 @@ def initialize_rest(*, reload_script_modules=False):
     startup_timer.record("initialize extra networks")
 
 
-def decode_cookie(cookie, key=None):
-
-    try:
-        payload, digest = cookie.rsplit("|", 1)
-        if hasattr(digest, "decode"):
-            digest = digest.decode("ascii")  # pragma: no cover
-    except ValueError:
-        return
-
-    if hmac.compare_digest(_cookie_digest(payload, key=key), digest):
-        return payload
-
-
-def _secret_key(key=None):
-    if key is None:
-        key = "TyHeChuWFC20210"
-
-    if isinstance(key, str):  # pragma: no cover
-        key = key.encode("latin1")  # ensure bytes
-
-    return key
-
-
-def _cookie_digest(payload, key=None):
-    key = _secret_key(key)
-
-    return hmac.new(key, payload.encode("utf-8"), sha512).hexdigest()
-
-
-REMEMBER_COOKIE_NAME = 'greatleapai_token'
-
-
-class GreateLeapAuthBackend(AuthenticationBackend):
-    async def authenticate(
-        self, conn: HTTPConnection
-    ) -> typing.Optional[typing.Tuple["AuthCredentials", "SimpleUser"]]:
-        token = conn.cookies[REMEMBER_COOKIE_NAME]
-        user_id = decode_cookie(token)
-        app = conn.scope["app"]
-        app.tokens[token] = user_id
-        return AuthCredentials([token]), SimpleUser(user_id)
-
-
 def setup_middleware(app):
     # reset current middleware to allow modifying user provided list
     app.middleware_stack = None
