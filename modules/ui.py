@@ -1044,7 +1044,7 @@ def create_ui():
             )
 
             img2img_args = dict(
-                fn=wrap_gradio_gpu_call(
+                fn=wrap_gradio_gpu_call_with_request(
                     modules.img2img.img2img, extra_outputs=[None, '', '']),
                 _js="submit_img2img",
                 inputs=[
@@ -1933,7 +1933,7 @@ def create_ui():
     for _interface, label, _ifid in interfaces:
         shared.tab_names.append(label)
 
-    with gr.Blocks(theme=shared.gradio_theme, analytics_enabled=False, title="Stable Diffusion") as demo:
+    with gr.Blocks(theme=shared.gradio_theme, analytics_enabled=False, title="GreatLeap.AI") as demo:
         with gr.Row(elem_id="quicksettings", variant="compact"):
             for _i, k, _item in sorted(quicksettings_list, key=lambda x: quicksettings_names.get(x[1], x[0])):
                 component = create_setting_component(k, is_quicksettings=True)
@@ -1966,9 +1966,9 @@ def create_ui():
             gr.Audio(interactive=False, value=os.path.join(
                 script_path, "notification.mp3"), elem_id="audio_notification", visible=False)
 
-        footer = shared.html("footer.html")
-        footer = footer.format(versions=versions_html())
-        gr.HTML(footer, elem_id="footer")
+        # footer = shared.html("footer.html")
+        # footer = footer.format(versions=versions_html())
+        # gr.HTML(footer, elem_id="footer")
 
         text_settings = gr.Textbox(
             elem_id="settings_json", value=lambda: opts.dumpjson(), visible=False)

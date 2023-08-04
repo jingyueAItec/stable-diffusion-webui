@@ -25,8 +25,8 @@ def wrap_gradio_gpu_call_with_request(func, extra_outputs=None):
     def f(*args, **kwargs):
 
         # if the first argument is a string that says "task(...)", it is treated as a job id
-        if len(args) > 0 and type(args[0]) == str and args[0][0:5] == "task(" and args[0][-1] == ")":
-            id_task = args[0]
+        if len(args) > 1 and type(args[1]) == str and args[1][0:5] == "task(" and args[1][-1] == ")":
+            id_task = args[1]
             progress.add_task_to_queue(id_task)
         else:
             id_task = None
