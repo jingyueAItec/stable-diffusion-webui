@@ -19,6 +19,7 @@ recorded_results_limit = 2
 
 def start_task(id_task):
     global current_task
+    print("start_task", id_task)
 
     current_task = id_task
     pending_tasks.pop(id_task, None)
@@ -26,6 +27,7 @@ def start_task(id_task):
 
 def finish_task(id_task):
     global current_task
+    print("finish_task", id_task)
 
     if current_task == id_task:
         current_task = None
@@ -69,6 +71,7 @@ def progressapi(req: ProgressRequest):
     active = req.id_task == current_task
     queued = req.id_task in pending_tasks
     completed = req.id_task in finished_tasks
+    print("progressapi", req.id_task)
 
     if not active:
         return ProgressResponse(active=active, queued=queued, completed=completed, id_live_preview=-1, textinfo="In queue..." if queued else "Waiting...")

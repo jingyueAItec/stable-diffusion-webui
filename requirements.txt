@@ -30,3 +30,5 @@ safetensors
 psutil
 rich
 tomesd
+oss2==2.18.0
+snowflake-id
