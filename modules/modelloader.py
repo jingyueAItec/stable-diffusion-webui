@@ -1,14 +1,25 @@
+import importlib
 import os
 import shutil
-import importlib
 from urllib.parse import urlparse
 
 from modules import shared
-from modules.upscaler import Upscaler, UpscalerLanczos, UpscalerNearest, UpscalerNone
-from modules.paths import script_path, models_path
+from modules.paths import models_path
+from modules.paths import script_path
+from modules.upscaler import Upscaler
+from modules.upscaler import UpscalerLanczos
+from modules.upscaler import UpscalerNearest
+from modules.upscaler import UpscalerNone
 
 
-def load_models(model_path: str, model_url: str = None, command_path: str = None, ext_filter=None, download_name=None, ext_blacklist=None) -> list:
+def load_models(
+    model_path: str,
+    model_url: str = None,
+    command_path: str = None,
+    ext_filter=None,
+    download_name=None,
+    ext_blacklist=None,
+) -> list:
     """
     A one-and done loader to try finding the desired models in specified directories.
 
@@ -25,7 +36,7 @@ def load_models(model_path: str, model_url: str = None, command_path: str = None
         places = []
 
         if command_path is not None and command_path != model_path:
-            pretrained_path = os.path.join(command_path, 'experiments/pretrained_models')
+            pretrained_path = os.path.join(command_path, "experiments/pretrained_models")
             if os.path.exists(pretrained_path):
                 print(f"Appending path: {pretrained_path}")
                 places.append(pretrained_path)
@@ -47,6 +58,7 @@ def load_models(model_path: str, model_url: str = None, command_path: str = None
         if model_url is not None and len(output) == 0:
             if download_name is not None:
                 from basicsr.utils.download_util import load_file_from_url
+
                 dl = load_file_from_url(model_url, places[0], True, download_name)
                 output.append(dl)
             else:
@@ -153,5 +165,7 @@ def load_upscalers():
     shared.sd_upscalers = sorted(
         datas,
         # Special case for UpscalerNone keeps it at the beginning of the list.
-        key=lambda x: x.name.lower() if not isinstance(x.scaler, (UpscalerNone, UpscalerLanczos, UpscalerNearest)) else ""
+        key=lambda x: x.name.lower()
+        if not isinstance(x.scaler, (UpscalerNone, UpscalerLanczos, UpscalerNearest))
+        else "",
     )

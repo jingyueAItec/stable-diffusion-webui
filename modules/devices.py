@@ -1,6 +1,8 @@
-import sys
 import contextlib
+import sys
+
 import torch
+
 from modules import errors
 
 if sys.platform == "darwin":
@@ -12,6 +14,7 @@ def has_mps() -> bool:
         return False
     else:
         return mac_specific.has_mps
+
 
 def extract_device_id(args, name):
     for x in range(len(args)):
@@ -72,7 +75,6 @@ def enable_tf32():
         torch.backends.cudnn.allow_tf32 = True
 
 
-
 errors.run(enable_tf32, "Enabling TF32")
 
 cpu = torch.device("cpu")
@@ -95,7 +97,7 @@ def randn(seed, shape):
     from modules.shared import opts
 
     torch.manual_seed(seed)
-    if opts.randn_source == "CPU" or device.type == 'mps':
+    if opts.randn_source == "CPU" or device.type == "mps":
         return torch.randn(shape, device=cpu).to(device)
     return torch.randn(shape, device=device)
 
@@ -103,7 +105,7 @@ def randn(seed, shape):
 def randn_without_seed(shape):
     from modules.shared import opts
 
-    if opts.randn_source == "CPU" or device.type == 'mps':
+    if opts.randn_source == "CPU" or device.type == "mps":
         return torch.randn(shape, device=cpu).to(device)
     return torch.randn(shape, device=device)
 
@@ -121,7 +123,11 @@ def autocast(disable=False):
 
 
 def without_autocast(disable=False):
-    return torch.autocast("cuda", enabled=False) if torch.is_autocast_enabled() and not disable else contextlib.nullcontext()
+    return (
+        torch.autocast("cuda", enabled=False)
+        if torch.is_autocast_enabled() and not disable
+        else contextlib.nullcontext()
+    )
 
 
 class NansException(Exception):
@@ -141,7 +147,7 @@ def test_for_nans(x, where):
         message = "A tensor with all NaNs was produced in Unet."
 
         if not shared.cmd_opts.no_half:
-            message += " This could be either because there's not enough precision to represent the picture, or because your video card does not support half type. Try setting the \"Upcast cross attention layer to float32\" option in Settings > Stable Diffusion or using the --no-half commandline argument to fix this."
+            message += ' This could be either because there\'s not enough precision to represent the picture, or because your video card does not support half type. Try setting the "Upcast cross attention layer to float32" option in Settings > Stable Diffusion or using the --no-half commandline argument to fix this.'
 
     elif where == "vae":
         message = "A tensor with all NaNs was produced in VAE."

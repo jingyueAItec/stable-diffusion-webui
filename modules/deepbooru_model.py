@@ -195,12 +195,12 @@ class DeepDanbooruModel(nn.Module):
         self.n_Conv_178 = nn.Conv2d(kernel_size=(1, 1), in_channels=4096, out_channels=9176, bias=False)
 
     def forward(self, *inputs):
-        t_358, = inputs
+        (t_358,) = inputs
         t_359 = t_358.permute(*[0, 3, 1, 2])
         t_359_padded = F.pad(t_359, [2, 3, 2, 3], value=0)
         t_360 = self.n_Conv_0(t_359_padded.to(self.n_Conv_0.bias.dtype) if devices.unet_needs_upcast else t_359_padded)
         t_361 = F.relu(t_360)
-        t_361 = F.pad(t_361, [0, 1, 0, 1], value=float('-inf'))
+        t_361 = F.pad(t_361, [0, 1, 0, 1], value=float("-inf"))
         t_362 = self.n_MaxPool_0(t_361)
         t_363 = self.n_Conv_1(t_362)
         t_364 = self.n_Conv_2(t_362)
@@ -672,7 +672,6 @@ class DeepDanbooruModel(nn.Module):
         return t_771
 
     def load_state_dict(self, state_dict, **kwargs):
-        self.tags = state_dict.get('tags', [])
+        self.tags = state_dict.get("tags", [])
 
-        super(DeepDanbooruModel, self).load_state_dict({k: v for k, v in state_dict.items() if k != 'tags'})
-
+        super(DeepDanbooruModel, self).load_state_dict({k: v for k, v in state_dict.items() if k != "tags"})

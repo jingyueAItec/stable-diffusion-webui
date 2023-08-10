@@ -6,7 +6,10 @@ import facexlib
 import gfpgan
 
 import modules.face_restoration
-from modules import paths, shared, devices, modelloader
+from modules import devices
+from modules import modelloader
+from modules import paths
+from modules import shared
 
 model_dir = "GFPGAN"
 user_path = None
@@ -35,9 +38,16 @@ def gfpgann():
     else:
         print("Unable to load gfpgan model!")
         return None
-    if hasattr(facexlib.detection.retinaface, 'device'):
+    if hasattr(facexlib.detection.retinaface, "device"):
         facexlib.detection.retinaface.device = devices.device_gfpgan
-    model = gfpgan_constructor(model_path=model_file, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=devices.device_gfpgan)
+    model = gfpgan_constructor(
+        model_path=model_file,
+        upscale=1,
+        arch="clean",
+        channel_multiplier=2,
+        bg_upsampler=None,
+        device=devices.device_gfpgan,
+    )
     loaded_gfpgan_model = model
 
     return model
@@ -57,7 +67,9 @@ def gfpgan_fix_faces(np_image):
     send_model_to(model, devices.device_gfpgan)
 
     np_image_bgr = np_image[:, :, ::-1]
-    cropped_faces, restored_faces, gfpgan_output_bgr = model.enhance(np_image_bgr, has_aligned=False, only_center_face=False, paste_back=True)
+    cropped_faces, restored_faces, gfpgan_output_bgr = model.enhance(
+        np_image_bgr, has_aligned=False, only_center_face=False, paste_back=True
+    )
     np_image = gfpgan_output_bgr[:, :, ::-1]
 
     model.face_helper.clean_all()
@@ -79,6 +91,7 @@ def setup_model(dirname):
     try:
         from gfpgan import GFPGANer
         from facexlib import detection, parsing  # noqa: F401
+
         global user_path
         global have_gfpgan
         global gfpgan_constructor

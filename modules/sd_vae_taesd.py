@@ -5,10 +5,12 @@ Tiny AutoEncoder for Stable Diffusion
 https://github.com/madebyollin/taesd
 """
 import os
+
 import torch
 import torch.nn as nn
 
-from modules import devices, paths_internal
+from modules import devices
+from modules import paths_internal
 
 sd_vae_taesd = None
 
@@ -36,11 +38,26 @@ class Block(nn.Module):
 
 def decoder():
     return nn.Sequential(
-        Clamp(), conv(4, 64), nn.ReLU(),
-        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), conv(64, 64, bias=False),
-        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), conv(64, 64, bias=False),
-        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), conv(64, 64, bias=False),
-        Block(64, 64), conv(64, 3),
+        Clamp(),
+        conv(4, 64),
+        nn.ReLU(),
+        Block(64, 64),
+        Block(64, 64),
+        Block(64, 64),
+        nn.Upsample(scale_factor=2),
+        conv(64, 64, bias=False),
+        Block(64, 64),
+        Block(64, 64),
+        Block(64, 64),
+        nn.Upsample(scale_factor=2),
+        conv(64, 64, bias=False),
+        Block(64, 64),
+        Block(64, 64),
+        Block(64, 64),
+        nn.Upsample(scale_factor=2),
+        conv(64, 64, bias=False),
+        Block(64, 64),
+        conv(64, 3),
     )
 
 
@@ -53,7 +70,8 @@ class TAESD(nn.Module):
         super().__init__()
         self.decoder = decoder()
         self.decoder.load_state_dict(
-            torch.load(decoder_path, map_location='cpu' if devices.device.type != 'cuda' else None))
+            torch.load(decoder_path, map_location="cpu" if devices.device.type != "cuda" else None)
+        )
 
     @staticmethod
     def unscale_latents(x):
@@ -62,12 +80,12 @@ class TAESD(nn.Module):
 
 
 def download_model(model_path):
-    model_url = 'https://github.com/madebyollin/taesd/raw/main/taesd_decoder.pth'
+    model_url = "https://github.com/madebyollin/taesd/raw/main/taesd_decoder.pth"
 
     if not os.path.exists(model_path):
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
-        print(f'Downloading TAESD decoder to: {model_path}')
+        print(f"Downloading TAESD decoder to: {model_path}")
         torch.hub.download_url_to_file(model_url, model_path)
 
 
@@ -83,6 +101,6 @@ def model():
             sd_vae_taesd.eval()
             sd_vae_taesd.to(devices.device, devices.dtype)
         else:
-            raise FileNotFoundError('TAESD model not found')
+            raise FileNotFoundError("TAESD model not found")
 
     return sd_vae_taesd.decoder

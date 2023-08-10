@@ -1,20 +1,22 @@
 from __future__ import annotations
+
 import math
 import sys
 import traceback
-import psutil
-
-import torch
-from torch import einsum
-
-from ldm.util import default
-from einops import rearrange
-
-from modules import shared, errors, devices, sub_quadratic_attention
-from modules.hypernetworks import hypernetwork
 
 import ldm.modules.attention
 import ldm.modules.diffusionmodules.model
+import psutil
+import torch
+from einops import rearrange
+from ldm.util import default
+from torch import einsum
+
+from modules import devices
+from modules import errors
+from modules import shared
+from modules import sub_quadratic_attention
+from modules.hypernetworks import hypernetwork
 
 diffusionmodules_model_AttnBlock_forward = ldm.modules.diffusionmodules.model.AttnBlock.forward
 
@@ -48,7 +50,11 @@ class SdOptimizationXformers(SdOptimization):
     priority = 100
 
     def is_available(self):
-        return shared.cmd_opts.force_enable_xformers or (shared.xformers_available and torch.version.cuda and (6, 0) <= torch.cuda.get_device_capability(shared.device) <= (9, 0))
+        return shared.cmd_opts.force_enable_xformers or (
+            shared.xformers_available
+            and torch.version.cuda
+            and (6, 0) <= torch.cuda.get_device_capability(shared.device) <= (9, 0)
+        )
 
     def apply(self):
         ldm.modules.attention.CrossAttention.forward = xformers_attention_forward
@@ -62,7 +68,9 @@ class SdOptimizationSdpNoMem(SdOptimization):
     priority = 80
 
     def is_available(self):
-        return hasattr(torch.nn.functional, "scaled_dot_product_attention") and callable(torch.nn.functional.scaled_dot_product_attention)
+        return hasattr(torch.nn.functional, "scaled_dot_product_attention") and callable(
+            torch.nn.functional.scaled_dot_product_attention
+        )
 
     def apply(self):
         ldm.modules.attention.CrossAttention.forward = scaled_dot_product_no_mem_attention_forward
@@ -96,7 +104,6 @@ class SdOptimizationV1(SdOptimization):
     cmd_opt = "opt_split_attention_v1"
     priority = 10
 
-
     def apply(self):
         ldm.modules.attention.CrossAttention.forward = split_cross_attention_forward_v1
 
@@ -124,20 +131,23 @@ class SdOptimizationDoggettx(SdOptimization):
 
 
 def list_optimizers(res):
-    res.extend([
-        SdOptimizationXformers(),
-        SdOptimizationSdpNoMem(),
-        SdOptimizationSdp(),
-        SdOptimizationSubQuad(),
-        SdOptimizationV1(),
-        SdOptimizationInvokeAI(),
-        SdOptimizationDoggettx(),
-    ])
+    res.extend(
+        [
+            SdOptimizationXformers(),
+            SdOptimizationSdpNoMem(),
+            SdOptimizationSdp(),
+            SdOptimizationSubQuad(),
+            SdOptimizationV1(),
+            SdOptimizationInvokeAI(),
+            SdOptimizationDoggettx(),
+        ]
+    )
 
 
 if shared.cmd_opts.xformers or shared.cmd_opts.force_enable_xformers:
     try:
         import xformers.ops
+
         shared.xformers_available = True
     except Exception:
         print("Cannot import xformers", file=sys.stderr)
@@ -145,10 +155,10 @@ if shared.cmd_opts.xformers or shared.cmd_opts.force_enable_xformers:
 
 
 def get_available_vram():
-    if shared.device.type == 'cuda':
+    if shared.device.type == "cuda":
         stats = torch.cuda.memory_stats(shared.device)
-        mem_active = stats['active_bytes.all.current']
-        mem_reserved = stats['reserved_bytes.all.current']
+        mem_active = stats["active_bytes.all.current"]
+        mem_reserved = stats["reserved_bytes.all.current"]
         mem_free_cuda, _ = torch.cuda.mem_get_info(torch.cuda.current_device())
         mem_free_torch = mem_reserved - mem_active
         mem_free_total = mem_free_cuda + mem_free_torch
@@ -169,7 +179,7 @@ def split_cross_attention_forward_v1(self, x, context=None, mask=None):
     v_in = self.to_v(context_v)
     del context, context_k, context_v, x
 
-    q, k, v = (rearrange(t, 'b n (h d) -> (b h) n d', h=h) for t in (q_in, k_in, v_in))
+    q, k, v = (rearrange(t, "b n (h d) -> (b h) n d", h=h) for t in (q_in, k_in, v_in))
     del q_in, k_in, v_in
 
     dtype = q.dtype
@@ -180,19 +190,19 @@ def split_cross_attention_forward_v1(self, x, context=None, mask=None):
         r1 = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device, dtype=q.dtype)
         for i in range(0, q.shape[0], 2):
             end = i + 2
-            s1 = einsum('b i d, b j d -> b i j', q[i:end], k[i:end])
+            s1 = einsum("b i d, b j d -> b i j", q[i:end], k[i:end])
             s1 *= self.scale
 
             s2 = s1.softmax(dim=-1)
             del s1
 
-            r1[i:end] = einsum('b i j, b j d -> b i d', s2, v[i:end])
+            r1[i:end] = einsum("b i j, b j d -> b i d", s2, v[i:end])
             del s2
         del q, k, v
 
     r1 = r1.to(dtype)
 
-    r2 = rearrange(r1, '(b h) n d -> b n (h d)', h=h)
+    r2 = rearrange(r1, "(b h) n d -> b n (h d)", h=h)
     del r1
 
     return self.to_out(r2)
@@ -211,21 +221,21 @@ def split_cross_attention_forward(self, x, context=None, mask=None):
 
     dtype = q_in.dtype
     if shared.opts.upcast_attn:
-        q_in, k_in, v_in = q_in.float(), k_in.float(), v_in if v_in.device.type == 'mps' else v_in.float()
+        q_in, k_in, v_in = q_in.float(), k_in.float(), v_in if v_in.device.type == "mps" else v_in.float()
 
     with devices.without_autocast(disable=not shared.opts.upcast_attn):
         k_in = k_in * self.scale
 
         del context, x
 
-        q, k, v = (rearrange(t, 'b n (h d) -> (b h) n d', h=h) for t in (q_in, k_in, v_in))
+        q, k, v = (rearrange(t, "b n (h d) -> (b h) n d", h=h) for t in (q_in, k_in, v_in))
         del q_in, k_in, v_in
 
         r1 = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device, dtype=q.dtype)
 
         mem_free_total = get_available_vram()
 
-        gb = 1024 ** 3
+        gb = 1024**3
         tensor_size = q.shape[0] * q.shape[1] * k.shape[1] * q.element_size()
         modifier = 3 if q.element_size() == 2 else 2.5
         mem_required = tensor_size * modifier
@@ -238,25 +248,27 @@ def split_cross_attention_forward(self, x, context=None, mask=None):
 
         if steps > 64:
             max_res = math.floor(math.sqrt(math.sqrt(mem_free_total / 2.5)) / 8) * 64
-            raise RuntimeError(f'Not enough memory, use lower resolution (max approx. {max_res}x{max_res}). '
-                               f'Need: {mem_required / 64 / gb:0.1f}GB free, Have:{mem_free_total / gb:0.1f}GB free')
+            raise RuntimeError(
+                f"Not enough memory, use lower resolution (max approx. {max_res}x{max_res}). "
+                f"Need: {mem_required / 64 / gb:0.1f}GB free, Have:{mem_free_total / gb:0.1f}GB free"
+            )
 
         slice_size = q.shape[1] // steps if (q.shape[1] % steps) == 0 else q.shape[1]
         for i in range(0, q.shape[1], slice_size):
             end = i + slice_size
-            s1 = einsum('b i d, b j d -> b i j', q[:, i:end], k)
+            s1 = einsum("b i d, b j d -> b i j", q[:, i:end], k)
 
             s2 = s1.softmax(dim=-1, dtype=q.dtype)
             del s1
 
-            r1[:, i:end] = einsum('b i j, b j d -> b i d', s2, v)
+            r1[:, i:end] = einsum("b i j, b j d -> b i d", s2, v)
             del s2
 
         del q, k, v
 
     r1 = r1.to(dtype)
 
-    r2 = rearrange(r1, '(b h) n d -> b n (h d)', h=h)
+    r2 = rearrange(r1, "(b h) n d -> b n (h d)", h=h)
     del r1
 
     return self.to_out(r2)
@@ -265,10 +277,12 @@ def split_cross_attention_forward(self, x, context=None, mask=None):
 # -- Taken from https://github.com/invoke-ai/InvokeAI and modified --
 mem_total_gb = psutil.virtual_memory().total // (1 << 30)
 
+
 def einsum_op_compvis(q, k, v):
-    s = einsum('b i d, b j d -> b i j', q, k)
+    s = einsum("b i d, b j d -> b i j", q, k)
     s = s.softmax(dim=-1, dtype=s.dtype)
-    return einsum('b i j, b j d -> b i d', s, v)
+    return einsum("b i j, b j d -> b i d", s, v)
+
 
 def einsum_op_slice_0(q, k, v, slice_size):
     r = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device, dtype=q.dtype)
@@ -277,6 +291,7 @@ def einsum_op_slice_0(q, k, v, slice_size):
         r[i:end] = einsum_op_compvis(q[i:end], k[i:end], v[i:end])
     return r
 
+
 def einsum_op_slice_1(q, k, v, slice_size):
     r = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device, dtype=q.dtype)
     for i in range(0, q.shape[1], slice_size):
@@ -284,8 +299,9 @@ def einsum_op_slice_1(q, k, v, slice_size):
         r[:, i:end] = einsum_op_compvis(q[:, i:end], k, v)
     return r
 
+
 def einsum_op_mps_v1(q, k, v):
-    if q.shape[0] * q.shape[1] <= 2**16: # (512x512) max q.shape[1]: 4096
+    if q.shape[0] * q.shape[1] <= 2**16:  # (512x512) max q.shape[1]: 4096
         return einsum_op_compvis(q, k, v)
     else:
         slice_size = math.floor(2**30 / (q.shape[0] * q.shape[1]))
@@ -293,11 +309,13 @@ def einsum_op_mps_v1(q, k, v):
             slice_size -= 1
         return einsum_op_slice_1(q, k, v, slice_size)
 
+
 def einsum_op_mps_v2(q, k, v):
     if mem_total_gb > 8 and q.shape[0] * q.shape[1] <= 2**16:
         return einsum_op_compvis(q, k, v)
     else:
         return einsum_op_slice_0(q, k, v, 1)
+
 
 def einsum_op_tensor_mem(q, k, v, max_tensor_mb):
     size_mb = q.shape[0] * q.shape[1] * k.shape[1] * q.element_size() // (1 << 20)
@@ -308,21 +326,23 @@ def einsum_op_tensor_mem(q, k, v, max_tensor_mb):
         return einsum_op_slice_0(q, k, v, q.shape[0] // div)
     return einsum_op_slice_1(q, k, v, max(q.shape[1] // div, 1))
 
+
 def einsum_op_cuda(q, k, v):
     stats = torch.cuda.memory_stats(q.device)
-    mem_active = stats['active_bytes.all.current']
-    mem_reserved = stats['reserved_bytes.all.current']
+    mem_active = stats["active_bytes.all.current"]
+    mem_reserved = stats["reserved_bytes.all.current"]
     mem_free_cuda, _ = torch.cuda.mem_get_info(q.device)
     mem_free_torch = mem_reserved - mem_active
     mem_free_total = mem_free_cuda + mem_free_torch
     # Divide factor of safety as there's copying and fragmentation
     return einsum_op_tensor_mem(q, k, v, mem_free_total / 3.3 / (1 << 20))
 
+
 def einsum_op(q, k, v):
-    if q.device.type == 'cuda':
+    if q.device.type == "cuda":
         return einsum_op_cuda(q, k, v)
 
-    if q.device.type == 'mps':
+    if q.device.type == "mps":
         if mem_total_gb >= 32 and q.shape[0] % 32 != 0 and q.shape[0] * q.shape[1] < 2**18:
             return einsum_op_mps_v1(q, k, v)
         return einsum_op_mps_v2(q, k, v)
@@ -330,6 +350,7 @@ def einsum_op(q, k, v):
     # Smaller slices are faster due to L2/L3/SLC caches.
     # Tested on i7 with 8MB L3 cache.
     return einsum_op_tensor_mem(q, k, v, 32)
+
 
 def split_cross_attention_forward_invokeAI(self, x, context=None, mask=None):
     h = self.heads
@@ -344,15 +365,16 @@ def split_cross_attention_forward_invokeAI(self, x, context=None, mask=None):
 
     dtype = q.dtype
     if shared.opts.upcast_attn:
-        q, k, v = q.float(), k.float(), v if v.device.type == 'mps' else v.float()
+        q, k, v = q.float(), k.float(), v if v.device.type == "mps" else v.float()
 
     with devices.without_autocast(disable=not shared.opts.upcast_attn):
         k = k * self.scale
 
-        q, k, v = (rearrange(t, 'b n (h d) -> (b h) n d', h=h) for t in (q, k, v))
+        q, k, v = (rearrange(t, "b n (h d) -> (b h) n d", h=h) for t in (q, k, v))
         r = einsum_op(q, k, v)
     r = r.to(dtype)
-    return self.to_out(rearrange(r, '(b h) n d -> b n (h d)', h=h))
+    return self.to_out(rearrange(r, "(b h) n d -> b n (h d)", h=h))
+
 
 # -- End of code from https://github.com/invoke-ai/InvokeAI --
 
@@ -372,22 +394,30 @@ def sub_quad_attention_forward(self, x, context=None, mask=None):
     v = self.to_v(context_v)
     del context, context_k, context_v, x
 
-    q = q.unflatten(-1, (h, -1)).transpose(1,2).flatten(end_dim=1)
-    k = k.unflatten(-1, (h, -1)).transpose(1,2).flatten(end_dim=1)
-    v = v.unflatten(-1, (h, -1)).transpose(1,2).flatten(end_dim=1)
+    q = q.unflatten(-1, (h, -1)).transpose(1, 2).flatten(end_dim=1)
+    k = k.unflatten(-1, (h, -1)).transpose(1, 2).flatten(end_dim=1)
+    v = v.unflatten(-1, (h, -1)).transpose(1, 2).flatten(end_dim=1)
 
-    if q.device.type == 'mps':
+    if q.device.type == "mps":
         q, k, v = q.contiguous(), k.contiguous(), v.contiguous()
 
     dtype = q.dtype
     if shared.opts.upcast_attn:
         q, k = q.float(), k.float()
 
-    x = sub_quad_attention(q, k, v, q_chunk_size=shared.cmd_opts.sub_quad_q_chunk_size, kv_chunk_size=shared.cmd_opts.sub_quad_kv_chunk_size, chunk_threshold=shared.cmd_opts.sub_quad_chunk_threshold, use_checkpoint=self.training)
+    x = sub_quad_attention(
+        q,
+        k,
+        v,
+        q_chunk_size=shared.cmd_opts.sub_quad_q_chunk_size,
+        kv_chunk_size=shared.cmd_opts.sub_quad_kv_chunk_size,
+        chunk_threshold=shared.cmd_opts.sub_quad_chunk_threshold,
+        use_checkpoint=self.training,
+    )
 
     x = x.to(dtype)
 
-    x = x.unflatten(0, (-1, h)).transpose(1,2).flatten(start_dim=2)
+    x = x.unflatten(0, (-1, h)).transpose(1, 2).flatten(start_dim=2)
 
     out_proj, dropout = self.to_out
     x = out_proj(x)
@@ -395,14 +425,19 @@ def sub_quad_attention_forward(self, x, context=None, mask=None):
 
     return x
 
-def sub_quad_attention(q, k, v, q_chunk_size=1024, kv_chunk_size=None, kv_chunk_size_min=None, chunk_threshold=None, use_checkpoint=True):
-    bytes_per_token = torch.finfo(q.dtype).bits//8
+
+def sub_quad_attention(
+    q, k, v, q_chunk_size=1024, kv_chunk_size=None, kv_chunk_size_min=None, chunk_threshold=None, use_checkpoint=True
+):
+    bytes_per_token = torch.finfo(q.dtype).bits // 8
     batch_x_heads, q_tokens, _ = q.shape
     _, k_tokens, _ = k.shape
     qk_matmul_size_bytes = batch_x_heads * bytes_per_token * q_tokens * k_tokens
 
     if chunk_threshold is None:
-        chunk_threshold_bytes = int(get_available_vram() * 0.9) if q.device.type == 'mps' else int(get_available_vram() * 0.7)
+        chunk_threshold_bytes = (
+            int(get_available_vram() * 0.9) if q.device.type == "mps" else int(get_available_vram() * 0.7)
+        )
     elif chunk_threshold == 0:
         chunk_threshold_bytes = None
     else:
@@ -425,7 +460,7 @@ def sub_quad_attention(q, k, v, q_chunk_size=1024, kv_chunk_size=None, kv_chunk_
             v,
             query_chunk_size=q_chunk_size,
             kv_chunk_size=kv_chunk_size,
-            kv_chunk_size_min = kv_chunk_size_min,
+            kv_chunk_size_min=kv_chunk_size_min,
             use_checkpoint=use_checkpoint,
         )
 
@@ -454,7 +489,7 @@ def xformers_attention_forward(self, x, context=None, mask=None):
     k_in = self.to_k(context_k)
     v_in = self.to_v(context_v)
 
-    q, k, v = (rearrange(t, 'b n (h d) -> b n h d', h=h) for t in (q_in, k_in, v_in))
+    q, k, v = (rearrange(t, "b n (h d) -> b n h d", h=h) for t in (q_in, k_in, v_in))
     del q_in, k_in, v_in
 
     dtype = q.dtype
@@ -465,8 +500,9 @@ def xformers_attention_forward(self, x, context=None, mask=None):
 
     out = out.to(dtype)
 
-    out = rearrange(out, 'b n h d -> b n (h d)', h=h)
+    out = rearrange(out, "b n h d -> b n (h d)", h=h)
     return self.to_out(out)
+
 
 # Based on Diffusers usage of scaled dot product attention from https://github.com/huggingface/diffusers/blob/c7da8fd23359a22d0df2741688b5b4f33c26df21/src/diffusers/models/cross_attention.py
 # The scaled_dot_product_attention_forward function contains parts of code under Apache-2.0 license listed under Scaled Dot Product Attention in the Licenses section of the web UI interface
@@ -510,67 +546,70 @@ def scaled_dot_product_attention_forward(self, x, context=None, mask=None):
     hidden_states = self.to_out[1](hidden_states)
     return hidden_states
 
+
 def scaled_dot_product_no_mem_attention_forward(self, x, context=None, mask=None):
     with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=True, enable_mem_efficient=False):
         return scaled_dot_product_attention_forward(self, x, context, mask)
 
+
 def cross_attention_attnblock_forward(self, x):
-        h_ = x
-        h_ = self.norm(h_)
-        q1 = self.q(h_)
-        k1 = self.k(h_)
-        v = self.v(h_)
+    h_ = x
+    h_ = self.norm(h_)
+    q1 = self.q(h_)
+    k1 = self.k(h_)
+    v = self.v(h_)
 
-        # compute attention
-        b, c, h, w = q1.shape
+    # compute attention
+    b, c, h, w = q1.shape
 
-        q2 = q1.reshape(b, c, h*w)
-        del q1
+    q2 = q1.reshape(b, c, h * w)
+    del q1
 
-        q = q2.permute(0, 2, 1)   # b,hw,c
-        del q2
+    q = q2.permute(0, 2, 1)  # b,hw,c
+    del q2
 
-        k = k1.reshape(b, c, h*w) # b,c,hw
-        del k1
+    k = k1.reshape(b, c, h * w)  # b,c,hw
+    del k1
 
-        h_ = torch.zeros_like(k, device=q.device)
+    h_ = torch.zeros_like(k, device=q.device)
 
-        mem_free_total = get_available_vram()
+    mem_free_total = get_available_vram()
 
-        tensor_size = q.shape[0] * q.shape[1] * k.shape[2] * q.element_size()
-        mem_required = tensor_size * 2.5
-        steps = 1
+    tensor_size = q.shape[0] * q.shape[1] * k.shape[2] * q.element_size()
+    mem_required = tensor_size * 2.5
+    steps = 1
 
-        if mem_required > mem_free_total:
-            steps = 2**(math.ceil(math.log(mem_required / mem_free_total, 2)))
+    if mem_required > mem_free_total:
+        steps = 2 ** (math.ceil(math.log(mem_required / mem_free_total, 2)))
 
-        slice_size = q.shape[1] // steps if (q.shape[1] % steps) == 0 else q.shape[1]
-        for i in range(0, q.shape[1], slice_size):
-            end = i + slice_size
+    slice_size = q.shape[1] // steps if (q.shape[1] % steps) == 0 else q.shape[1]
+    for i in range(0, q.shape[1], slice_size):
+        end = i + slice_size
 
-            w1 = torch.bmm(q[:, i:end], k)     # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
-            w2 = w1 * (int(c)**(-0.5))
-            del w1
-            w3 = torch.nn.functional.softmax(w2, dim=2, dtype=q.dtype)
-            del w2
+        w1 = torch.bmm(q[:, i:end], k)  # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
+        w2 = w1 * (int(c) ** (-0.5))
+        del w1
+        w3 = torch.nn.functional.softmax(w2, dim=2, dtype=q.dtype)
+        del w2
 
-            # attend to values
-            v1 = v.reshape(b, c, h*w)
-            w4 = w3.permute(0, 2, 1)   # b,hw,hw (first hw of k, second of q)
-            del w3
+        # attend to values
+        v1 = v.reshape(b, c, h * w)
+        w4 = w3.permute(0, 2, 1)  # b,hw,hw (first hw of k, second of q)
+        del w3
 
-            h_[:, :, i:end] = torch.bmm(v1, w4)     # b, c,hw (hw of q) h_[b,c,j] = sum_i v[b,c,i] w_[b,i,j]
-            del v1, w4
+        h_[:, :, i:end] = torch.bmm(v1, w4)  # b, c,hw (hw of q) h_[b,c,j] = sum_i v[b,c,i] w_[b,i,j]
+        del v1, w4
 
-        h2 = h_.reshape(b, c, h, w)
-        del h_
+    h2 = h_.reshape(b, c, h, w)
+    del h_
 
-        h3 = self.proj_out(h2)
-        del h2
+    h3 = self.proj_out(h2)
+    del h2
 
-        h3 += x
+    h3 += x
 
-        return h3
+    return h3
+
 
 def xformers_attnblock_forward(self, x):
     try:
@@ -580,7 +619,7 @@ def xformers_attnblock_forward(self, x):
         k = self.k(h_)
         v = self.v(h_)
         b, c, h, w = q.shape
-        q, k, v = (rearrange(t, 'b c h w -> b (h w) c') for t in (q, k, v))
+        q, k, v = (rearrange(t, "b c h w -> b (h w) c") for t in (q, k, v))
         dtype = q.dtype
         if shared.opts.upcast_attn:
             q, k = q.float(), k.float()
@@ -589,11 +628,12 @@ def xformers_attnblock_forward(self, x):
         v = v.contiguous()
         out = xformers.ops.memory_efficient_attention(q, k, v, op=get_xformers_flash_attention_op(q, k, v))
         out = out.to(dtype)
-        out = rearrange(out, 'b (h w) c -> b c h w', h=h)
+        out = rearrange(out, "b (h w) c -> b c h w", h=h)
         out = self.proj_out(out)
         return x + out
     except NotImplementedError:
         return cross_attention_attnblock_forward(self, x)
+
 
 def sdp_attnblock_forward(self, x):
     h_ = x
@@ -602,7 +642,7 @@ def sdp_attnblock_forward(self, x):
     k = self.k(h_)
     v = self.v(h_)
     b, c, h, w = q.shape
-    q, k, v = (rearrange(t, 'b c h w -> b (h w) c') for t in (q, k, v))
+    q, k, v = (rearrange(t, "b c h w -> b (h w) c") for t in (q, k, v))
     dtype = q.dtype
     if shared.opts.upcast_attn:
         q, k = q.float(), k.float()
@@ -611,13 +651,15 @@ def sdp_attnblock_forward(self, x):
     v = v.contiguous()
     out = torch.nn.functional.scaled_dot_product_attention(q, k, v, dropout_p=0.0, is_causal=False)
     out = out.to(dtype)
-    out = rearrange(out, 'b (h w) c -> b c h w', h=h)
+    out = rearrange(out, "b (h w) c -> b c h w", h=h)
     out = self.proj_out(out)
     return x + out
+
 
 def sdp_no_mem_attnblock_forward(self, x):
     with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=True, enable_mem_efficient=False):
         return sdp_attnblock_forward(self, x)
+
 
 def sub_quad_attnblock_forward(self, x):
     h_ = x
@@ -626,11 +668,19 @@ def sub_quad_attnblock_forward(self, x):
     k = self.k(h_)
     v = self.v(h_)
     b, c, h, w = q.shape
-    q, k, v = (rearrange(t, 'b c h w -> b (h w) c') for t in (q, k, v))
+    q, k, v = (rearrange(t, "b c h w -> b (h w) c") for t in (q, k, v))
     q = q.contiguous()
     k = k.contiguous()
     v = v.contiguous()
-    out = sub_quad_attention(q, k, v, q_chunk_size=shared.cmd_opts.sub_quad_q_chunk_size, kv_chunk_size=shared.cmd_opts.sub_quad_kv_chunk_size, chunk_threshold=shared.cmd_opts.sub_quad_chunk_threshold, use_checkpoint=self.training)
-    out = rearrange(out, 'b (h w) c -> b c h w', h=h)
+    out = sub_quad_attention(
+        q,
+        k,
+        v,
+        q_chunk_size=shared.cmd_opts.sub_quad_q_chunk_size,
+        kv_chunk_size=shared.cmd_opts.sub_quad_kv_chunk_size,
+        chunk_threshold=shared.cmd_opts.sub_quad_chunk_threshold,
+        use_checkpoint=self.training,
+    )
+    out = rearrange(out, "b (h w) c -> b c h w", h=h)
     out = self.proj_out(out)
     return x + out

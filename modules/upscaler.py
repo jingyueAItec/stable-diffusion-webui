@@ -5,10 +5,11 @@ import PIL
 from PIL import Image
 
 import modules.shared
-from modules import modelloader, shared
+from modules import modelloader
+from modules import shared
 
-LANCZOS = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
-NEAREST = (Image.Resampling.NEAREST if hasattr(Image, 'Resampling') else Image.NEAREST)
+LANCZOS = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+NEAREST = Image.Resampling.NEAREST if hasattr(Image, "Resampling") else Image.NEAREST
 
 
 class Upscaler:
@@ -43,6 +44,7 @@ class Upscaler:
 
         try:
             import cv2  # noqa: F401
+
             self.can_tile = True
         except Exception:
             pass
@@ -77,7 +79,9 @@ class Upscaler:
         pass
 
     def find_models(self, ext_filter=None) -> list:
-        return modelloader.load_models(model_path=self.model_path, model_url=self.model_url, command_path=self.user_path)
+        return modelloader.load_models(
+            model_path=self.model_path, model_url=self.model_url, command_path=self.user_path
+        )
 
     def update_status(self, prompt):
         print(f"\nextras: {prompt}", file=shared.progress_print_out)
