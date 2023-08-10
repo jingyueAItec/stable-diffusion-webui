@@ -86,11 +86,13 @@ def txt2img(r: gr.Request, id_task: str, prompt: str, negative_prompt: str, prom
         "hr_prompt": hr_prompt,
         "hr_negative_prompt": hr_negative_prompt,
         "override_settings": override_settings,
+        "vae": shared.opts.sd_vae,
     }
 
-    succ, coin = create_aigc_item_subcoin(r, model_name, input_data)
+    succ, coin = create_aigc_item_subcoin(r, "txt2img", model_name, input_data)
     if not succ:
-        return [], '', plaintext_to_html("扣除金币失败"), plaintext_to_html('')
+        return [], '', plaintext_to_html("扣除金币失败"), plaintext_to_html("{}".format(coin))
+
 
     processed = modules.scripts.scripts_txt2img.run(p, *args)
 
@@ -108,7 +110,10 @@ def txt2img(r: gr.Request, id_task: str, prompt: str, negative_prompt: str, prom
     if opts.do_not_show_images:
         processed.images = []
 
-    create_aigc_item(r, model_name, input_data,
-                     processed.images, generation_info_js)
+    succ = create_aigc_item(r, "txt2img", model_name, input_data,
+                            processed.images, generation_info_js)
+
+    if not succ:
+        processed.info = "保存图片信息失败，请手动保存:" + processed.info
 
     return processed.images, generation_info_js, plaintext_to_html(processed.info+"\nCost:{}".format(coin)), plaintext_to_html(processed.comments)

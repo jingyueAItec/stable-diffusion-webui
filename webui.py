@@ -2,6 +2,7 @@ from __future__ import annotations
 import modules.hypernetworks.hypernetwork
 from modules.shared import cmd_opts
 from modules import modelloader
+# from modules.greatleap.login_mw import GreatLeapAILogin
 import hmac
 from hashlib import sha512
 import modules.ui
@@ -43,6 +44,10 @@ from starlette.authentication import SimpleUser, AuthCredentials
 from starlette.requests import HTTPConnection, Request
 from packaging import version
 import typing
+import socks
+import socket
+from urllib import request
+
 import logging
 
 logging.getLogger("xformers").addFilter(
@@ -375,8 +380,7 @@ class GreateLeapAuthBackend(AuthenticationBackend):
 def setup_middleware(app):
     # reset current middleware to allow modifying user provided list
     app.middleware_stack = None
-    # app.add_middleware(AuthenticationMiddleware,
-    #                   backend=GreateLeapAuthBackend())
+    # app.add_middleware(GreatLeapAILogin)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     configure_cors_middleware(app)
     app.build_middleware_stack()  # rebuild middleware stack on-the-fly
@@ -392,6 +396,13 @@ def configure_cors_middleware(app):
         cors_options["allow_origins"] = cmd_opts.cors_allow_origins.split(',')
     if cmd_opts.cors_allow_origins_regex:
         cors_options["allow_origin_regex"] = cmd_opts.cors_allow_origins_regex
+
+    cors_options = {
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+        "allow_credentials": True,
+        "allow_origins":["*"],
+    }
     app.add_middleware(CORSMiddleware, **cors_options)
 
 
@@ -539,3 +550,6 @@ if __name__ == "__main__":
         api_only()
     else:
         webui()
+
+    socks.set_default_proxy(socks.SOCKS5, "127.0.0.1", 1080)
+    socket.socket = socks.socksocket

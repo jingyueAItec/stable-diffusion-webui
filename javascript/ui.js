@@ -218,8 +218,161 @@ function restoreProgressImg2img() {
 
 
 onUiLoaded(function() {
+    console.log("pjello world2")
     showRestoreProgressButton('txt2img', localStorage.getItem("txt2img_task_id"));
     showRestoreProgressButton('img2img', localStorage.getItem("img2img_task_id"));
+	var mutationObserver = new MutationObserver(function (m) {
+		if (gradioApp().querySelector('#setting_sd_model_checkpoint')) {
+			// console.log(gradio_config.components.find(e => e.props.elem_id === "setting_sd_model_checkpoint").props.value)
+			console.log(gradioApp().querySelector('#setting_sd_model_checkpoint').querySelector('input').value);
+		}
+	});
+	mutationObserver.observe(gradioApp().getElementById('quicksettings').querySelector('input'), { attributes: true });
+	setTimeout(function () {
+		// 从当前URL中获取type、itemId和modelId参数
+		const urlParams = new URLSearchParams(window.location.search);
+		const type = urlParams.get('type');
+		const itemId = urlParams.get('itemId');
+		const modelId = urlParams.get('modelId');
+
+		if (!type) return;
+
+		let data = {};
+		let link = '';
+
+		if (type === 'model') {
+			// 构建请求体数据
+			data = {
+				'model_id': +modelId
+			};
+			link = 'https://api-zy.greatleapai.com/models/detail';
+		} else if (type === 'lora' || type === 'text2img' || type === 'img2img') {
+			// 构建请求体数据
+			data = {
+				'item_id': itemId
+			};
+			link = 'https://api-zy.greatleapai.com/items/draw_info';
+		}
+
+		// 构建请求头，包含cookies
+		const headers = new Headers();
+		headers.append('Content-Type', 'application/json');
+
+		// 发送请求
+		fetch(link, {
+			method: 'POST',
+			headers: headers,
+			credentials: 'include', // 发送包含cookies的请求
+			body: JSON.stringify(data)
+		})
+			.then(response => {
+				if (response.ok) {
+					return response.json();
+				} else {
+					throw new Error('Request failed. Status: ' + response.status);
+				}
+			})
+			.then(res => {
+				// console.log(res);
+
+				if (type === 'model') {
+					let model = res.data.detail;
+					let component1 = gradio_config.components.find(e => e.props.elem_id === "setting_sd_model_checkpoint");
+					component1.instance.$$set({ value: model.path });
+					return;
+				}
+
+				let item = res.data.item_meta.item;
+				let model = res.data.item_meta.model;
+
+				if (type === 'lora') {
+					let component3 = gradio_config.components.find(e => e.props.elem_id === "txt2img_prompt");
+					component3.instance.$$set({ value: item.prompt });
+				}
+				else if (type === 'text2img') {
+					gradioApp().querySelector('#tabs').querySelectorAll('button')[0].click();
+
+					let component1 = gradio_config.components.find(e => e.props.elem_id === "setting_sd_model_checkpoint");
+					component1.instance.$$set({ value: model.path });
+
+					let component2 = gradio_config.components.find(e => e.props.elem_id === "setting_sd_vae");
+					component2.instance.$$set({ value: item.vae });
+
+					let component22 = gradio_config.components.find(e => e.props.elem_id === "setting_CLIP_stop_at_last_layers");
+					component22.instance.$$set({ value: item.clipskip });
+
+					let component3 = gradio_config.components.find(e => e.props.elem_id === "txt2img_prompt");
+					component3.instance.$$set({ value: item.prompt });
+
+					let component4 = gradio_config.components.find(e => e.props.elem_id === "txt2img_neg_prompt");
+					component4.instance.$$set({ value: item.negative_prompt });
+
+					let component5 = gradio_config.components.find(e => e.props.elem_id === "txt2img_sampling");
+					component5.instance.$$set({ value: item.sampler });
+
+					let component6 = gradio_config.components.find(e => e.props.elem_id === "txt2img_steps");
+					component6.instance.$$set({ value: item.steps });
+
+					let component7 = gradio_config.components.find(e => e.props.elem_id === "txt2img_restore_faces");
+					component7.instance.$$set({ value: item.restore_faces });
+
+					let component8 = gradio_config.components.find(e => e.props.elem_id === "txt2img_width");
+					component8.instance.$$set({ value: item.width });
+
+					let component9 = gradio_config.components.find(e => e.props.elem_id === "txt2img_height");
+					component9.instance.$$set({ value: item.height });
+
+					let component10 = gradio_config.components.find(e => e.props.elem_id === "txt2img_cfg_scale");
+					component10.instance.$$set({ value: item.cfgs });
+
+					let component11 = gradio_config.components.find(e => e.props.elem_id === "txt2img_seed");
+					component11.instance.$$set({ value: item.seed });
+				}
+				else if (type === 'img2img') {
+					gradioApp().querySelector('#tabs').querySelectorAll('button')[1].click();
+					let component3 = gradio_config.components.find(e => e.props.elem_id === "img2img_prompt");
+					component3.instance.$$set({ value: item.prompt });
+
+					let component4 = gradio_config.components.find(e => e.props.elem_id === "img2img_neg_prompt");
+					component4.instance.$$set({ value: item.negative_prompt });
+
+					var a = gradio_config.components.find(e => e.props.elem_id === "img2img_image");
+
+					function convertImageToBase64(url) {
+						return fetch(url)
+							.then(response => response.blob())
+							.then(blob => {
+								return new Promise((resolve, reject) => {
+									const reader = new FileReader();
+									reader.onloadend = () => {
+										const base64Data = reader.result;
+										resolve(base64Data);
+									};
+									reader.onerror = reject;
+									reader.readAsDataURL(blob);
+								});
+							});
+					}
+
+					// 使用示例
+					const imageUrl = item.icon
+
+					convertImageToBase64(imageUrl)
+						.then(base64Data => {
+							// console.log(base64Data); // 输出图片的 Base64 字符串
+							a.instance.$$set({ value: base64Data });
+						})
+						.catch(error => {
+							console.error('Failed to convert image to Base64:', error);
+						});
+				}
+			})
+			.catch(error => {
+				console.error(error);
+				// 在这里处理请求错误
+			});
+
+	}, 2000);
 });
 
 
