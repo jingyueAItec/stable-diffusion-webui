@@ -1,13 +1,17 @@
 import re
 
-import torch
+import extra_networks_lora
 import gradio as gr
+import lora
+import torch
+import ui_extra_networks_lora
 from fastapi import FastAPI
 
-import lora
-import extra_networks_lora
-import ui_extra_networks_lora
-from modules import script_callbacks, ui_extra_networks, extra_networks, shared
+from modules import extra_networks
+from modules import script_callbacks
+from modules import shared
+from modules import ui_extra_networks
+
 
 def unload():
     torch.nn.Linear.forward = torch.nn.Linear_forward_before_lora
@@ -23,22 +27,22 @@ def before_ui():
     extra_networks.register_extra_network(extra_networks_lora.ExtraNetworkLora())
 
 
-if not hasattr(torch.nn, 'Linear_forward_before_lora'):
+if not hasattr(torch.nn, "Linear_forward_before_lora"):
     torch.nn.Linear_forward_before_lora = torch.nn.Linear.forward
 
-if not hasattr(torch.nn, 'Linear_load_state_dict_before_lora'):
+if not hasattr(torch.nn, "Linear_load_state_dict_before_lora"):
     torch.nn.Linear_load_state_dict_before_lora = torch.nn.Linear._load_from_state_dict
 
-if not hasattr(torch.nn, 'Conv2d_forward_before_lora'):
+if not hasattr(torch.nn, "Conv2d_forward_before_lora"):
     torch.nn.Conv2d_forward_before_lora = torch.nn.Conv2d.forward
 
-if not hasattr(torch.nn, 'Conv2d_load_state_dict_before_lora'):
+if not hasattr(torch.nn, "Conv2d_load_state_dict_before_lora"):
     torch.nn.Conv2d_load_state_dict_before_lora = torch.nn.Conv2d._load_from_state_dict
 
-if not hasattr(torch.nn, 'MultiheadAttention_forward_before_lora'):
+if not hasattr(torch.nn, "MultiheadAttention_forward_before_lora"):
     torch.nn.MultiheadAttention_forward_before_lora = torch.nn.MultiheadAttention.forward
 
-if not hasattr(torch.nn, 'MultiheadAttention_load_state_dict_before_lora'):
+if not hasattr(torch.nn, "MultiheadAttention_load_state_dict_before_lora"):
     torch.nn.MultiheadAttention_load_state_dict_before_lora = torch.nn.MultiheadAttention._load_from_state_dict
 
 torch.nn.Linear.forward = lora.lora_Linear_forward
@@ -54,16 +58,40 @@ script_callbacks.on_before_ui(before_ui)
 script_callbacks.on_infotext_pasted(lora.infotext_pasted)
 
 
-shared.options_templates.update(shared.options_section(('extra_networks', "Extra Networks"), {
-    "sd_lora": shared.OptionInfo("None", "Add Lora to prompt", gr.Dropdown, lambda: {"choices": ["None", *lora.available_loras]}, refresh=lora.list_available_loras),
-    "lora_preferred_name": shared.OptionInfo("Alias from file", "When adding to prompt, refer to Lora by", gr.Radio, {"choices": ["Alias from file", "Filename"]}),
-    "lora_add_hashes_to_infotext": shared.OptionInfo(True, "Add Lora hashes to infotext"),
-}))
+shared.options_templates.update(
+    shared.options_section(
+        ("extra_networks", "Extra Networks"),
+        {
+            "sd_lora": shared.OptionInfo(
+                "None",
+                "Add Lora to prompt",
+                gr.Dropdown,
+                lambda: {"choices": ["None", *lora.available_loras]},
+                refresh=lora.list_available_loras,
+            ),
+            "lora_preferred_name": shared.OptionInfo(
+                "Alias from file",
+                "When adding to prompt, refer to Lora by",
+                gr.Radio,
+                {"choices": ["Alias from file", "Filename"]},
+            ),
+            "lora_add_hashes_to_infotext": shared.OptionInfo(True, "Add Lora hashes to infotext"),
+        },
+    )
+)
 
 
-shared.options_templates.update(shared.options_section(('compatibility', "Compatibility"), {
-    "lora_functional": shared.OptionInfo(False, "Lora: use old method that takes longer when you have multiple Loras active and produces same results as kohya-ss/sd-webui-additional-networks extension"),
-}))
+shared.options_templates.update(
+    shared.options_section(
+        ("compatibility", "Compatibility"),
+        {
+            "lora_functional": shared.OptionInfo(
+                False,
+                "Lora: use old method that takes longer when you have multiple Loras active and produces same results as kohya-ss/sd-webui-additional-networks extension",
+            ),
+        },
+    )
+)
 
 
 def create_lora_json(obj: lora.LoraOnDisk):
@@ -95,7 +123,7 @@ def infotext_pasted(infotext, d):
     if not hashes:
         return
 
-    hashes = [x.strip().split(':', 1) for x in hashes.split(",")]
+    hashes = [x.strip().split(":", 1) for x in hashes.split(",")]
     hashes = {x[0].strip().replace(",", ""): x[1].strip() for x in hashes}
 
     def lora_replacement(m):
@@ -108,7 +136,7 @@ def infotext_pasted(infotext, d):
         if lora_on_disk is None:
             return m.group(0)
 
-        return f'<lora:{lora_on_disk.get_alias()}:'
+        return f"<lora:{lora_on_disk.get_alias()}:"
 
     d["Prompt"] = re.sub(re_lora, lora_replacement, d["Prompt"])
 

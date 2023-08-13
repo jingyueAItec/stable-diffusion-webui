@@ -1,12 +1,14 @@
 import json
 import os
 
-from modules import ui_extra_networks, sd_hijack, shared
+from modules import sd_hijack
+from modules import shared
+from modules import ui_extra_networks
 
 
 class ExtraNetworksPageTextualInversion(ui_extra_networks.ExtraNetworksPage):
     def __init__(self):
-        super().__init__('Textual Inversion')
+        super().__init__("Textual Inversion")
         self.allow_negative_prompt = True
 
     def refresh(self):

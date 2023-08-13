@@ -1,19 +1,19 @@
 # coding=utf-8
-from PIL import Image
-import oss2
-from io import BytesIO
-from snowflake import SnowflakeGenerator
-import gradio as gr
-import requests
 import json
+from io import BytesIO
+
+import gradio as gr
+import oss2
+import requests
+from PIL import Image
+from snowflake import SnowflakeGenerator
 
 auth = oss2.Auth("LTAI5tQnLUQgZSY9xy7rz2fL", "eIVPKw6R7eSv2Mt2EJ6ZJJ9Rh3HKqJ")
-bucket = oss2.Bucket(
-    auth, 'oss-cn-hangzhou.aliyuncs.com/', 'zy-pic-items-test')
+bucket = oss2.Bucket(auth, "oss-cn-hangzhou.aliyuncs.com/", "zy-pic-items-test")
 zy_backend_url = "https://api-zy.greatleapai.com/items/create_txt2img_sd"
 zy_backend_subcoin_url = "https://api-zy.greatleapai.com/items/create_subcoin"
 aigc_id_gen = SnowflakeGenerator(1023)
-REMEMBER_COOKIE_NAME = 'greatleapai_token'
+REMEMBER_COOKIE_NAME = "greatleapai_token"
 
 
 def gen_aigc_oss_id():
@@ -22,9 +22,7 @@ def gen_aigc_oss_id():
 
 
 def call_zy_backend(conn: gr.Request, url, data):
-    headers = {
-        "cookie": conn.headers.cookie
-    }
+    headers = {"cookie": conn.headers.cookie}
     rsp = requests.post(url, json=data, headers=headers)
 
     return rsp.status_code, rsp.text
@@ -61,22 +59,19 @@ def create_aigc_item(conn: gr.Request, draw_type, model_name, input_data, images
         oss_name = "{}.png".format(id)
 
         buf = BytesIO()
-        image.save(buf, 'png')
+        image.save(buf, "png")
 
         img_data = buf.getvalue()
         result = bucket.put_object(oss_name, img_data)
         buf.close()
 
-        images.append({
-            "url": "https://cdn.greatleapai.com/{}".format(oss_name),
-            "size": len(img_data)
-        })
+        images.append({"url": "https://cdn.greatleapai.com/{}".format(oss_name), "size": len(img_data)})
 
     data = {
         "gen_meta": json.loads(gen_info),
         "draw_type": draw_type,
         "model_name": model_name,
-        "input_data":  input_data,
+        "input_data": input_data,
         "images": images,
     }
 
