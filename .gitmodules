@@ -1,0 +1,33 @@
+[submodule "deployment/submodules/taming-transformers"]
+	path = deployment/submodules/taming-transformers
+	url = https://github.com/CompVis/taming-transformers.git
+[submodule "deployment/submodules/stable-diffusion-stability-ai"]
+	path = deployment/submodules/stable-diffusion-stability-ai
+	url = https://github.com/Stability-AI/stablediffusion.git
+[submodule "deployment/submodules/CodeFormer"]
+	path = deployment/submodules/CodeFormer
+	url = https://github.com/sczhou/CodeFormer.git
+[submodule "deployment/submodules/BLIP"]
+	path = deployment/submodules/BLIP
+	url = https://github.com/salesforce/BLIP.git
+[submodule "deployment/submodules/k-diffusion"]
+	path = deployment/submodules/k-diffusion
+	url = https://github.com/crowsonkb/k-diffusion.git
+[submodule "deployment/submodules/clip-interrogator"]
+	path = deployment/submodules/clip-interrogator
+	url = https://github.com/pharmapsychotic/clip-interrogator
+[submodule "deployment/submodules/generative-models"]
+	path = deployment/submodules/generative-models
+	url = https://github.com/Stability-AI/generative-models
+[submodule "deployment/submodules/GFPGAN"]
+	path = deployment/submodules/GFPGAN
+	url = https://github.com/TencentARC/GFPGAN.git
+[submodule "deployment/submodules/CLIP"]
+	path = deployment/submodules/CLIP
+	url = https://github.com/openai/CLIP.git
+[submodule "deployment/submodules/open_clip"]
+	path = deployment/submodules/open_clip
+	url = https://github.com/mlfoundations/open_clip.git
+[submodule "deployment/submodules/stable-diffusion-webui-docker"]
+	path = deployment/submodules/stable-diffusion-webui-docker
+	url = git@github.com:AbdBarho/stable-diffusion-webui-docker.git

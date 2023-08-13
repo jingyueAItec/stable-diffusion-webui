@@ -1,0 +1,75 @@
+FROM python:3.10.9-slim
+
+ENV DEBIAN_FRONTEND=noninteractive PIP_PREFER_BINARY=1
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && \
+    # we need those
+    apt-get install -y fonts-dejavu-core rsync git jq moreutils aria2 \
+    # extensions needs those
+    ffmpeg libglfw3-dev libgles2-mesa-dev pkg-config libcairo2 libcairo2-dev build-essential
+
+ENV ROOT=/stable-diffusion-webui
+COPY . ${ROOT}/
+
+#COPY docker/download/data/torch-2.0.1_cu118-cp310-cp310-linux_x86_64.whl /tmp/
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install ${ROOT}/deployment/docker/download/data/torch-2.0.1_cu118-cp310-cp310-linux_x86_64.whl \
+        torchvision --index-url https://download.pytorch.org/whl/cu118 && \
+    pip install -r ${ROOT}/requirements_versions.txt && \
+    pip install ${ROOT}/deployment/docker/download/data/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
+
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git && \
+#    cd stable-diffusion-webui && \
+#    git reset --hard 20ae71faa8ef035c31aa3a410b707d792c8203a3 && \
+#    pip install -r requirements_versions.txt
+
+#COPY docker/download/data/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl /tmp/
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    pip install /tmp/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
+    # rm -f /tmp/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
+
+RUN mkdir -p ${ROOT}/repositories && \
+    ln -s ${ROOT}/deployment/submodules/taming-transformers ${ROOT}/repositories/taming-transformers && \
+    ln -s ${ROOT}/deployment/submodules/stable-diffusion-stability-ai ${ROOT}/repositories/stable-diffusion-stability-ai && \
+    ln -s ${ROOT}/deployment/submodules/CodeFormer ${ROOT}/repositories/CodeFormer && \
+    ln -s ${ROOT}/deployment/submodules/BLIP ${ROOT}/repositories/BLIP && \
+    ln -s ${ROOT}/deployment/submodules/k-diffusion ${ROOT}/repositories/k-diffusion && \
+    ln -s ${ROOT}/deployment/submodules/clip-interrogator ${ROOT}/repositories/clip-interrogator && \
+    ln -s ${ROOT}/deployment/submodules/generative-models ${ROOT}/repositories/generative-models
+
+RUN mkdir -p ${ROOT}/interrogate && cp ${ROOT}/repositories/clip-interrogator/data/* ${ROOT}/interrogate
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r ${ROOT}/repositories/CodeFormer/requirements.txt
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install pyngrok \
+        ${ROOT}/deployment/submodules/GFPGAN \
+        ${ROOT}/deployment/submodules/CLIP \
+        ${ROOT}/deployment/submodules/open_clip
+
+# Note: don't update the sha of previous versions because the install will take forever
+# instead, update the repo state in a later step
+
+# TODO: either remove if fixed in A1111 (unlikely) or move to the top with other apt stuff
+RUN apt-get -y install libgoogle-perftools-dev && apt-get clean
+ENV LD_PRELOAD=libtcmalloc.so
+
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    pip install -r ${ROOT}/requirements_versions.txt
+
+RUN mv ${ROOT}/style.css ${ROOT}/user.css && \
+  # one of the ugliest hacks I ever wrote \
+  sed -i 's/in_app_dir = .*/in_app_dir = True/g' /usr/local/lib/python3.10/site-packages/gradio/routes.py && \
+  git config --global --add safe.directory '*'
+
+RUN ln -s ${ROOT}/deployment/submodules/stable-diffusion-webui-docker/data /data && \
+    ln -s ${ROOT}/deployment/submodules/stable-diffusion-webui-docker/services/AUTOMATIC1111 /docker
+WORKDIR ${ROOT}
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV CLI_ARGS=""
+EXPOSE 7860
+# ENTRYPOINT ["/docker/entrypoint.sh"]
+# CMD python -u webui.py --listen --port 7860 ${CLI_ARGS}

@@ -1,0 +1,4 @@
+https://download.pytorch.org/whl/cu118/torch-2.0.1%2Bcu118-cp310-cp310-linux_x86_64.whl
+  out=torch-2.0.1_cu118-cp310-cp310-linux_x86_64.whl
+https://github.com/AbdBarho/stable-diffusion-webui-docker/releases/download/6.0.0/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64-pytorch201.whl
+  out=xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
