@@ -42,9 +42,16 @@ RUN --mount=type=cache,target=/cache --mount=type=cache,target=/root/.cache/pip 
 
 
 RUN --mount=type=cache,target=/root/.cache/pip \
+  git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git stable-diffusion-webui-temp && \
+  cd stable-diffusion-webui-temp && \
+  git reset --hard 20ae71faa8ef035c31aa3a410b707d792c8203a3 && \
+  pip install -r requirements_versions.txt
+
+ARG SHA=68f336bd994bed5442ad95bad6b6ad5564a5409a
+RUN --mount=type=cache,target=/root/.cache/pip \
   git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git && \
   cd stable-diffusion-webui && \
-  git reset --hard 20ae71faa8ef035c31aa3a410b707d792c8203a3 && \
+  git reset --hard ${SHA} && \
   pip install -r requirements_versions.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip  \
@@ -71,13 +78,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # TODO: either remove if fixed in A1111 (unlikely) or move to the top with other apt stuff
 RUN apt-get -y install libgoogle-perftools-dev && apt-get clean
 ENV LD_PRELOAD=libtcmalloc.so
-
-ARG SHA=68f336bd994bed5442ad95bad6b6ad5564a5409a
-RUN --mount=type=cache,target=/root/.cache/pip \
-  cd stable-diffusion-webui && \
-  git fetch && \
-  git reset --hard ${SHA} && \
-  pip install -r requirements_versions.txt
 
 COPY . /docker
 
