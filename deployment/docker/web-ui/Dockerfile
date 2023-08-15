@@ -43,24 +43,28 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install /tmp/torch-2.0.1_cu118-cp310-cp310-linux_x86_64.whl \
     torchvision --index-url https://download.pytorch.org/whl/cu118
 
+# ARG SHA=68f336bd994bed5442ad95bad6b6ad5564a5409a
+# RUN --mount=type=cache,target=/root/.cache/pip \
+#   git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git && \
+#   cd stable-diffusion-webui && \
+#   git reset --hard ${SHA} && \
+#   pip install -r requirements_versions.txt
+COPY requirements_versions.txt /tmp/
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /tmp/requirements_versions.txt
 
-
-#RUN --mount=type=cache,target=/root/.cache/pip \
-#  git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git stable-diffusion-webui-temp && \
-#  cd stable-diffusion-webui-temp && \
-#  git reset --hard 20ae71faa8ef035c31aa3a410b707d792c8203a3 && \
-#  pip install -r requirements_versions.txt
+# RUN --mount=type=cache,target=/root/.cache/pip  \
+#   --mount=type=bind,from=xformers,source=/wheel.whl,target=/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl \
+#   pip install /xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
+COPY deployment/docker/download/data/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl /tmp/
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install /tmp/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
 
 ARG SHA=68f336bd994bed5442ad95bad6b6ad5564a5409a
 RUN --mount=type=cache,target=/root/.cache/pip \
   git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git && \
   cd stable-diffusion-webui && \
-  git reset --hard ${SHA} && \
-  pip install -r requirements_versions.txt
-
-RUN --mount=type=cache,target=/root/.cache/pip  \
-  --mount=type=bind,from=xformers,source=/wheel.whl,target=/xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl \
-  pip install /xformers-0.0.21.dev544-cp310-cp310-manylinux2014_x86_64.whl
+  git reset --hard ${SHA}
 
 ENV ROOT=/stable-diffusion-webui
 
