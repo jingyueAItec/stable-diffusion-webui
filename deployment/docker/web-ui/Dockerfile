@@ -1,6 +1,6 @@
 FROM alpine/git:2.36.2 as download
 
-COPY clone.sh /clone.sh
+COPY deployment/docker/web-ui/clone.sh /clone.sh
 
 RUN . /clone.sh taming-transformers https://github.com/CompVis/taming-transformers.git 24268930bf1dce879235a7fddd0b2355b84d7ea6 \
   && rm -rf data assets **/*.ipynb
@@ -79,7 +79,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN apt-get -y install libgoogle-perftools-dev && apt-get clean
 ENV LD_PRELOAD=libtcmalloc.so
 
-COPY . /docker
+COPY deployment/docker/web-ui /docker
 
 RUN \
   python3 /docker/info.py ${ROOT}/modules/ui.py && \
