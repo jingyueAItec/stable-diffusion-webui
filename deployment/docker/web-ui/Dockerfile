@@ -69,7 +69,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 ENV ROOT=/stable-diffusion-webui
 
 
-COPY --from=download /repositories/ ${ROOT}/repositories/
+#COPY --from=download /repositories/ ${ROOT}/repositories/
+COPY deployment/submodules/ ${ROOT}/repositories/
+
 RUN mkdir ${ROOT}/interrogate && cp ${ROOT}/repositories/clip-interrogator/data/* ${ROOT}/interrogate
 RUN --mount=type=cache,target=/root/.cache/pip \
   pip install -r ${ROOT}/repositories/CodeFormer/requirements.txt
